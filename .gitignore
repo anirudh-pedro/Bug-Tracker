@@ -1,0 +1,56 @@
+# Node
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+*.env
+
+# Build
+build/
+dist/
+
+# React Native
+android/app/build/
+ios/Pods/
+
+# Sensitive/Private files and folders
+*.key
+*.pem
+*.crt
+*.p12
+*.jks
+*.keystore
+*.pfx
+*.bak
+*.swp
+*.swo
+# Android/iOS secrets
+android/app/debug.keystore
+android/app/release.keystore
+android/keystores/
+ios/Pods/
+ios/Podfile.lock
+# IDE/editor settings
+.vscode/
+.idea/
+*.iml
+# Test/coverage
+coverage/
+.nyc_output/
+# Misc
+*.secret
+*.private
+*.credentials
+*.backup
+*.orig
+*.rej
