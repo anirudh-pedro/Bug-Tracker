@@ -39,7 +39,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('combined'));
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.mongo_uri)
 .then(() => {
   console.log('✅ Connected to MongoDB');
 })
@@ -54,9 +54,9 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use('/api/test', require('./routes/test'));
 app.use('/api/bugs', require('./routes/bugs'));
 app.use('/api/dashboard', require('./routes/dashboard'));
-// app.use('/api/auth', require('./routes/auth'));
-// app.use('/api/users', require('./routes/users'));
-// app.use('/api/projects', require('./routes/projects'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/projects', require('./routes/projects'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

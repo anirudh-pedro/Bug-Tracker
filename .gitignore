@@ -10,6 +10,10 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+# Firebase config
+frontend/android/app/google-services.json
+
+
 # Env
 .env
 .env.*
@@ -54,3 +58,23 @@ coverage/
 *.backup
 *.orig
 *.rej
+
+# Google API keys and secrets
+*.key
+*.json
+*.p12
+*.pem
+*.crt
+*.pfx
+*.jks
+*.keystore
+# Common env files
+.env
+.env.*
+*.env
+# React Native/Expo secrets
+app.json
+app.config.js
+# Android debug/release keystores
+android/app/debug.keystore
+android/app/release.keystore
