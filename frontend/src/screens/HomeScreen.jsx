@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Alert,
   ScrollView,
   Modal,
+  TextInput,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import auth from '@react-native-firebase/auth';
@@ -15,12 +16,42 @@ import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-const HomeScreen = () => {
+const HomeScreen = ({ navigation, route }) => {
   const user = auth().currentUser;
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+  const [projectName, setProjectName] = useState('');
+
+  // Check if we should show the create project modal
+  useEffect(() => {
+    if (route?.params?.showCreateProject) {
+      setShowCreateProjectModal(true);
+    }
+  }, [route?.params]);
 
   const toggleProfileDropdown = () => {
     setShowProfileDropdown(!showProfileDropdown);
+  };
+
+  const handleCreateProject = () => {
+    if (!projectName.trim()) {
+      Alert.alert('Required Field', 'Please enter a project name');
+      return;
+    }
+
+    // Here you would typically save the project to your backend
+    console.log('Creating project:', projectName);
+    console.log('User info:', route?.params?.userInfo);
+    
+    // Close modal and show success
+    setShowCreateProjectModal(false);
+    setProjectName('');
+    Alert.alert('Success', `Project "${projectName}" created successfully!`);
+  };
+
+  const closeCreateProjectModal = () => {
+    setShowCreateProjectModal(false);
+    setProjectName('');
   };
 
   const signOut = async () => {
@@ -399,6 +430,53 @@ const HomeScreen = () => {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* Create Project Modal */}
+      <Modal
+        visible={showCreateProjectModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeCreateProjectModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Close Button */}
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={closeCreateProjectModal}
+            >
+              <Icon name="close" size={24} color="#ffffff" />
+            </TouchableOpacity>
+
+            {/* Rocket Icon */}
+            <View style={styles.rocketContainer}>
+              <Icon name="rocket-launch" size={40} color="#ffffff" />
+            </View>
+
+            {/* Modal Content */}
+            <Text style={styles.modalTitle}>Create your first project</Text>
+            
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.projectInput}
+                placeholder="Project name"
+                placeholderTextColor="#888888"
+                value={projectName}
+                onChangeText={setProjectName}
+                autoFocus={true}
+              />
+            </View>
+
+            {/* Create Button */}
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={handleCreateProject}
+            >
+              <Text style={styles.createButtonText}>Create</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -862,6 +940,93 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 50,
     fontWeight: '500',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#333333',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    minWidth: 300,
+    maxWidth: 350,
+    elevation: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    position: 'relative',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 15,
+    left: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#555555',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    elevation: 5,
+  },
+  rocketContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#555555',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    elevation: 5,
+    shadowColor: '#ffffff',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  inputContainer: {
+    width: '100%',
+    marginBottom: 25,
+  },
+  projectInput: {
+    backgroundColor: '#555555',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#ffffff',
+    borderBottomWidth: 2,
+    borderBottomColor: '#888888',
+  },
+  createButton: {
+    backgroundColor: '#ff6b6b',
+    borderRadius: 25,
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    elevation: 3,
+    shadowColor: '#ff6b6b',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  createButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

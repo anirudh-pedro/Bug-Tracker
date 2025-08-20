@@ -12,11 +12,12 @@ import GetStartedScreen from './src/screens/GetStartedScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import ProjectsScreen from './src/screens/ProjectsScreen';
+import CreateProjectTab from './src/screens/CreateProjectTab';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const TabNavigator = () => {
+const TabNavigator = ({ route }) => {
   return (
     <Tab.Navigator
       screenOptions={({route}) => ({
@@ -77,13 +78,42 @@ const TabNavigator = () => {
         tabBarIcon: ({focused, color, size}) => {
           let iconName;
           let iconSize = focused ? 26 : 22;
+          let isCreateTab = route.name === 'CreateProject';
 
           if (route.name === 'Home') {
             iconName = 'home';
           } else if (route.name === 'Bugs') {
             iconName = 'bug-report';
+          } else if (route.name === 'CreateProject') {
+            iconName = 'add';
+            iconSize = 28; // Slightly larger for the + icon
           } else if (route.name === 'Projects') {
             iconName = 'folder';
+          }
+
+          if (isCreateTab) {
+            return (
+              <View style={{
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 45,
+                height: 45,
+                backgroundColor: '#ff6b6b',
+                borderRadius: 22.5,
+                elevation: 4,
+                shadowColor: '#ff6b6b',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.4,
+                shadowRadius: 4,
+                marginBottom: 10,
+              }}>
+                <Icon 
+                  name={iconName} 
+                  size={iconSize} 
+                  color="#ffffff"
+                />
+              </View>
+            );
           }
 
           return (
@@ -113,18 +143,20 @@ const TabNavigator = () => {
             label = '🏠 Home';
           } else if (route.name === 'Bugs') {
             label = '🐞 Bugs';
+          } else if (route.name === 'CreateProject') {
+            label = '➕ Create';
           } else if (route.name === 'Projects') {
-            label = '📂 Projects';
+            label = '📂 My Projects';
           }
 
           return (
             <Text style={{
-              fontSize: 11,
+              fontSize: route.name === 'CreateProject' ? 10 : 11,
               fontWeight: focused ? '700' : '500',
-              color: color,
+              color: route.name === 'CreateProject' ? '#ff6b6b' : color,
               textAlign: 'center',
-              marginTop: 2,
-              textShadowColor: focused ? '#667eea40' : 'transparent',
+              marginTop: route.name === 'CreateProject' ? -5 : 2,
+              textShadowColor: focused && route.name !== 'CreateProject' ? '#667eea40' : 'transparent',
               textShadowOffset: { width: 0, height: 0 },
               textShadowRadius: focused ? 4 : 0,
             }}>
@@ -136,6 +168,7 @@ const TabNavigator = () => {
       <Tab.Screen 
         name="Home" 
         component={HomeScreen}
+        initialParams={route?.params}
         options={{
           tabBarBadge: null,
         }}
@@ -156,6 +189,22 @@ const TabNavigator = () => {
             borderWidth: 2,
             borderColor: '#1a1a1a',
           }
+        }}
+      />
+      <Tab.Screen 
+        name="CreateProject" 
+        component={CreateProjectTab}
+        listeners={({navigation}) => ({
+          tabPress: (e) => {
+            // Prevent default action
+            e.preventDefault();
+            
+            // Navigate to Home and show project creation modal
+            navigation.navigate('Home', { showCreateModal: true });
+          },
+        })}
+        options={{
+          tabBarBadge: null,
         }}
       />
       <Tab.Screen 

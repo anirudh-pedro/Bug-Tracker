@@ -14,6 +14,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import auth from '@react-native-firebase/auth';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import AntDesign from 'react-native-vector-icons/AntDesign';
 
 // Configure Google Sign-In
 GoogleSignin.configure({
@@ -1222,7 +1223,7 @@ const LoginScreen = () => {
                 <ActivityIndicator size="small" color="#666666" />
               ) : (
                 <>
-                  <Icon name="google" size={20} color="#666666" />
+                  <AntDesign name="google" size={20} color="#f46042ff" />
                   <Text style={styles.googleButtonText}>Sign in with Google</Text>
                 </>
               )}

@@ -45,10 +45,16 @@ const GetStartedScreen = ({ navigation, route }) => {
       return;
     }
 
-    // Navigate to main app or dashboard
+    // Navigate to main app with flag to show project creation modal
     navigation.reset({
       index: 0,
-      routes: [{ name: 'MainApp' }],
+      routes: [{ 
+        name: 'MainApp', 
+        params: { 
+          showCreateProject: true,
+          userInfo: { industry, contactNumber, ...user }
+        }
+      }],
     });
   };
 
