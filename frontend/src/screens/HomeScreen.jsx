@@ -15,6 +15,7 @@ import auth from '@react-native-firebase/auth';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const HomeScreen = ({ navigation, route }) => {
   const user = auth().currentUser;
@@ -24,34 +25,77 @@ const HomeScreen = ({ navigation, route }) => {
 
   // Check if we should show the create project modal
   useEffect(() => {
-    if (route?.params?.showCreateProject) {
-      setShowCreateProjectModal(true);
-    }
-  }, [route?.params]);
+    const checkAndShowCreateModal = async () => {
+      try {
+        // Check if this is a request to show the modal
+        if (route?.params?.showCreateProject) {
+          
+          // Check if this is specifically for first-time users
+          if (route?.params?.showCreateModal) {
+            // This is from the "+" button - always show
+            setShowCreateProjectModal(true);
+          } else {
+            // This is from first-time onboarding - check if already shown
+            const hasShownFirstProjectModal = await AsyncStorage.getItem(`first_project_modal_${user?.uid}`);
+            
+            if (!hasShownFirstProjectModal) {
+              setShowCreateProjectModal(true);
+              // Mark that we've shown the first-time project creation modal
+              await AsyncStorage.setItem(`first_project_modal_${user?.uid}`, 'shown');
+            }
+          }
+          
+          // Clear the navigation parameters to prevent showing again
+          navigation.setParams({ 
+            showCreateProject: undefined,
+            showCreateModal: undefined 
+          });
+        }
+      } catch (error) {
+        console.error('Error checking first project modal status:', error);
+      }
+    };
+
+    checkAndShowCreateModal();
+  }, [route?.params, navigation, user?.uid]);
 
   const toggleProfileDropdown = () => {
     setShowProfileDropdown(!showProfileDropdown);
   };
 
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
     if (!projectName.trim()) {
       Alert.alert('Required Field', 'Please enter a project name');
       return;
     }
 
-    // Here you would typically save the project to your backend
-    console.log('Creating project:', projectName);
-    console.log('User info:', route?.params?.userInfo);
-    
-    // Close modal and show success
-    setShowCreateProjectModal(false);
-    setProjectName('');
-    Alert.alert('Success', `Project "${projectName}" created successfully!`);
+    try {
+      // Here you would typically save the project to your backend
+      console.log('Creating project:', projectName);
+      console.log('User info:', route?.params?.userInfo);
+      
+      // Close modal and clear state
+      setShowCreateProjectModal(false);
+      setProjectName('');
+      
+      // Show success message
+      Alert.alert('Success', `Project "${projectName}" created successfully!`);
+      
+    } catch (error) {
+      console.error('Error creating project:', error);
+      Alert.alert('Error', 'Failed to create project. Please try again.');
+    }
   };
 
   const closeCreateProjectModal = () => {
     setShowCreateProjectModal(false);
     setProjectName('');
+  };
+
+  const showCreateProjectModalManually = () => {
+    // This function can be called when user manually wants to create a project
+    // (e.g., from the "+" button in bottom navigation)
+    setShowCreateProjectModal(true);
   };
 
   const signOut = async () => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const GetStartedScreen = ({ navigation, route }) => {
   const [industry, setIndustry] = useState('Select');
@@ -18,6 +19,27 @@ const GetStartedScreen = ({ navigation, route }) => {
   const [showIndustryDropdown, setShowIndustryDropdown] = useState(false);
 
   const user = route?.params?.user || {};
+
+  // Check if user has already completed onboarding
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      try {
+        const hasCompletedOnboarding = await AsyncStorage.getItem(`user_onboarding_${user.uid}`);
+        
+        if (hasCompletedOnboarding) {
+          // User has already completed onboarding, navigate directly to MainApp
+          navigation.replace('MainApp');
+        }
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        // On error, stay on GetStarted screen to be safe
+      }
+    };
+
+    if (user.uid) {
+      checkOnboardingStatus();
+    }
+  }, [user.uid, navigation]);
 
   const industries = [
     'Technology',
@@ -34,7 +56,7 @@ const GetStartedScreen = ({ navigation, route }) => {
     'Other'
   ];
 
-  const handleGetStarted = () => {
+  const handleGetStarted = async () => {
     if (industry === 'Select') {
       Alert.alert('Required Field', 'Please select your industry');
       return;
@@ -45,17 +67,68 @@ const GetStartedScreen = ({ navigation, route }) => {
       return;
     }
 
-    // Navigate to main app with flag to show project creation modal
-    navigation.reset({
-      index: 0,
-      routes: [{ 
-        name: 'MainApp', 
-        params: { 
-          showCreateProject: true,
-          userInfo: { industry, contactNumber, ...user }
-        }
-      }],
-    });
+    // Validate phone number - must be exactly 10 digits
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(contactNumber.trim())) {
+      Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    try {
+      // For now, we'll skip the API call and just save locally
+      // In production, you would make the API call here
+      /*
+      const response = await fetch('http://192.168.212.115:5000/api/users/complete-onboarding', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.accessToken}` // Assuming we have access token
+        },
+        body: JSON.stringify({
+          phoneNumber: contactNumber.trim(),
+          industry: industry
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to save user data');
+      }
+
+      console.log('User onboarding completed:', data);
+      */
+
+      // Save user data locally for now
+      const userData = {
+        uid: user.uid,
+        phoneNumber: contactNumber.trim(),
+        industry: industry,
+        completedAt: new Date().toISOString()
+      };
+      
+      await AsyncStorage.setItem(`user_data_${user.uid}`, JSON.stringify(userData));
+
+      // Mark onboarding as complete in AsyncStorage
+      await AsyncStorage.setItem(`user_onboarding_${user.uid}`, 'completed');
+
+      console.log('User onboarding completed locally:', userData);
+
+      // Navigate to main app with flag to show project creation modal
+      navigation.reset({
+        index: 0,
+        routes: [{ 
+          name: 'MainApp', 
+          params: { 
+            showCreateProject: true,
+            userInfo: { industry, contactNumber, ...user }
+          }
+        }],
+      });
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      Alert.alert('Error', 'Failed to save your information. Please try again.');
+    }
   };
 
   return (
@@ -146,13 +219,31 @@ const GetStartedScreen = ({ navigation, route }) => {
               Contact Number <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
-              style={styles.textInput}
-              placeholder="Enter your Contact Number"
+              style={[
+                styles.textInput,
+                contactNumber && !/^\d{10}$/.test(contactNumber.trim()) && styles.invalidInput
+              ]}
+              placeholder="Enter 10-digit Contact Number"
               placeholderTextColor="#888888"
               value={contactNumber}
-              onChangeText={setContactNumber}
-              keyboardType="phone-pad"
+              onChangeText={(text) => {
+                // Only allow numbers and limit to 10 digits
+                const numericText = text.replace(/[^0-9]/g, '').slice(0, 10);
+                setContactNumber(numericText);
+              }}
+              keyboardType="numeric"
+              maxLength={10}
             />
+            {contactNumber && !/^\d{10}$/.test(contactNumber.trim()) && (
+              <Text style={styles.validationError}>
+                Please enter exactly 10 digits
+              </Text>
+            )}
+            {contactNumber && /^\d{10}$/.test(contactNumber.trim()) && (
+              <Text style={styles.validationSuccess}>
+                ✓ Valid phone number
+              </Text>
+            )}
           </View>
 
           {/* Get Started Button */}
@@ -368,6 +459,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ffffff',
     minHeight: 50,
+  },
+  invalidInput: {
+    borderColor: '#ff6b6b',
+    borderWidth: 2,
+  },
+  validationError: {
+    color: '#ff6b6b',
+    fontSize: 12,
+    marginTop: 5,
+    marginLeft: 5,
+  },
+  validationSuccess: {
+    color: '#28a745',
+    fontSize: 12,
+    marginTop: 5,
+    marginLeft: 5,
   },
   getStartedButton: {
     backgroundColor: '#ff6b6b',

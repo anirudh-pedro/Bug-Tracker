@@ -26,6 +26,33 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  phoneNumber: {
+    type: String,
+    validate: {
+      validator: function(v) {
+        // Allow empty phone number or validate 10 digits
+        return !v || /^\d{10}$/.test(v);
+      },
+      message: 'Phone number must be exactly 10 digits'
+    },
+    default: ''
+  },
+  industry: {
+    type: String,
+    enum: {
+      values: ['Technology', 'Healthcare', 'Finance', 'Education', 'Manufacturing', 'Retail', 'Consulting', 'Real Estate', 'Media & Entertainment', 'Non-Profit', 'Government', 'Other'],
+      message: 'Invalid industry selection'
+    },
+    default: ''
+  },
+  isFirstTimeUser: {
+    type: Boolean,
+    default: true
+  },
+  hasCompletedOnboarding: {
+    type: Boolean,
+    default: false
+  },
   role: {
     type: String,
     enum: {

@@ -4,6 +4,62 @@ const { authenticate, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
+// @desc    Complete user onboarding
+// @route   POST /api/users/complete-onboarding
+// @access  Private
+router.post('/complete-onboarding', authenticate, async (req, res) => {
+  try {
+    const { phoneNumber, industry } = req.body;
+
+    // Validate phone number
+    if (!phoneNumber || !/^\d{10}$/.test(phoneNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number must be exactly 10 digits'
+      });
+    }
+
+    // Validate industry
+    const validIndustries = ['Technology', 'Healthcare', 'Finance', 'Education', 'Manufacturing', 'Retail', 'Consulting', 'Real Estate', 'Media & Entertainment', 'Non-Profit', 'Government', 'Other'];
+    if (!industry || !validIndustries.includes(industry)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a valid industry'
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      {
+        phoneNumber,
+        industry,
+        isFirstTimeUser: false,
+        hasCompletedOnboarding: true
+      },
+      { new: true, runValidators: true }
+    ).select('-password -googleId');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Onboarding completed successfully',
+      data: user
+    });
+  } catch (error) {
+    console.error('Complete onboarding error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while completing onboarding'
+    });
+  }
+});
+
 // @desc    Get all users
 // @route   GET /api/users
 // @access  Private (Admin/Manager only)

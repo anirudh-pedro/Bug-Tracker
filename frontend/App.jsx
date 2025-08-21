@@ -6,6 +6,7 @@ import {TouchableOpacity, View, Text} from 'react-native';
 import auth from '@react-native-firebase/auth';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import LoginScreen from './src/screens/LoginScreen';
 import GetStartedScreen from './src/screens/GetStartedScreen';
@@ -30,8 +31,8 @@ const TabNavigator = ({ route }) => {
           backgroundColor: '#1a1a1a',
           borderTopWidth: 1,
           borderTopColor: '#333333',
-          height: 90,
-          paddingBottom: 25,
+          height: 85,
+          paddingBottom: 20,
           paddingTop: 10,
           paddingHorizontal: 10,
           elevation: 20,
@@ -46,15 +47,16 @@ const TabNavigator = ({ route }) => {
         tabBarItemStyle: {
           paddingVertical: 5,
           borderRadius: 12,
-          marginHorizontal: 4,
+          marginHorizontal: 2,
+          flex: 1,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 10,
           fontWeight: '600',
           marginTop: 4,
           marginBottom: 2,
         },
-        tabBarActiveTintColor: '#667eea',
+        tabBarActiveTintColor: '#ff6b6b',
         tabBarInactiveTintColor: '#888888',
         tabBarAllowFontScaling: false,
         tabBarButton: (props) => (
@@ -67,9 +69,10 @@ const TabNavigator = ({ route }) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 paddingVertical: 8,
+                paddingHorizontal: 4,
                 borderRadius: 12,
-                marginHorizontal: 4,
-                backgroundColor: props.accessibilityState?.selected ? '#667eea20' : 'transparent',
+                marginHorizontal: 2,
+                backgroundColor: props.accessibilityState?.selected ? '#ff6b6b20' : 'transparent',
               }
             ]}
             activeOpacity={0.7}
@@ -77,60 +80,57 @@ const TabNavigator = ({ route }) => {
         ),
         tabBarIcon: ({focused, color, size}) => {
           let iconName;
-          let iconSize = focused ? 26 : 22;
-          let isCreateTab = route.name === 'CreateProject';
+          let iconSize = focused ? 24 : 20;
 
           if (route.name === 'Home') {
             iconName = 'home';
           } else if (route.name === 'Bugs') {
             iconName = 'bug-report';
           } else if (route.name === 'CreateProject') {
-            iconName = 'add';
-            iconSize = 28; // Slightly larger for the + icon
-          } else if (route.name === 'Projects') {
-            iconName = 'folder';
-          }
-
-          if (isCreateTab) {
+            // For CreateProject, show the custom circular button
             return (
               <View style={{
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 45,
-                height: 45,
+                width: 40,
+                height: 40,
                 backgroundColor: '#ff6b6b',
-                borderRadius: 22.5,
+                borderRadius: 20,
                 elevation: 4,
                 shadowColor: '#ff6b6b',
                 shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.4,
+                shadowOpacity: 0.3,
                 shadowRadius: 4,
-                marginBottom: 10,
+                marginBottom: 2,
               }}>
                 <Icon 
-                  name={iconName} 
-                  size={iconSize} 
+                  name="add" 
+                  size={24} 
                   color="#ffffff"
                 />
               </View>
             );
+          } else if (route.name === 'Projects') {
+            iconName = 'folder';
           }
 
+          // Regular icons for other tabs
           return (
             <View style={{
               alignItems: 'center',
               justifyContent: 'center',
-              width: iconSize + 4,
-              height: iconSize + 4,
+              width: iconSize + 6,
+              height: iconSize + 6,
+              marginBottom: 2,
             }}>
               <Icon 
                 name={iconName} 
                 size={iconSize} 
-                color={color}
+                color={focused ? '#ff6b6b' : '#888888'}
                 style={{
-                  textShadowColor: focused ? '#667eea' : 'transparent',
+                  textShadowColor: focused ? '#ff6b6b' : 'transparent',
                   textShadowOffset: { width: 0, height: 0 },
-                  textShadowRadius: focused ? 8 : 0,
+                  textShadowRadius: focused ? 6 : 0,
                 }}
               />
             </View>
@@ -140,25 +140,25 @@ const TabNavigator = ({ route }) => {
           let label;
           
           if (route.name === 'Home') {
-            label = '🏠 Home';
+            label = 'Home';
           } else if (route.name === 'Bugs') {
-            label = '🐞 Bugs';
+            label = 'Bugs';
           } else if (route.name === 'CreateProject') {
-            label = '➕ Create';
+            return null; // No label for the + button
           } else if (route.name === 'Projects') {
-            label = '📂 My Projects';
+            label = 'Projects';
           }
 
           return (
             <Text style={{
-              fontSize: route.name === 'CreateProject' ? 10 : 11,
+              fontSize: 10,
               fontWeight: focused ? '700' : '500',
-              color: route.name === 'CreateProject' ? '#ff6b6b' : color,
+              color: focused ? '#ff6b6b' : '#888888',
               textAlign: 'center',
-              marginTop: route.name === 'CreateProject' ? -5 : 2,
-              textShadowColor: focused && route.name !== 'CreateProject' ? '#667eea40' : 'transparent',
+              marginTop: 2,
+              textShadowColor: focused ? '#ff6b6b40' : 'transparent',
               textShadowOffset: { width: 0, height: 0 },
-              textShadowRadius: focused ? 4 : 0,
+              textShadowRadius: focused ? 3 : 0,
             }}>
               {label}
             </Text>
@@ -196,11 +196,9 @@ const TabNavigator = ({ route }) => {
         component={CreateProjectTab}
         listeners={({navigation}) => ({
           tabPress: (e) => {
-            // Prevent default action
             e.preventDefault();
-            
-            // Navigate to Home and show project creation modal
-            navigation.navigate('Home', { showCreateModal: true });
+            // Navigate to Home and trigger modal
+            navigation.navigate('Home', {showCreateModal: true});
           },
         })}
         options={{
@@ -221,12 +219,37 @@ const TabNavigator = ({ route }) => {
 const App = () => {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
+  const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
+
+  // Check if user has completed onboarding
+  const checkUserOnboardingStatus = async (user) => {
+    try {
+      const hasCompletedOnboarding = await AsyncStorage.getItem(`user_onboarding_${user.uid}`);
+      
+      if (!hasCompletedOnboarding) {
+        setIsFirstTimeUser(true);
+      } else {
+        setIsFirstTimeUser(false);
+      }
+    } catch (error) {
+      console.error('Error checking onboarding status:', error);
+      // Default to showing onboarding for safety
+      setIsFirstTimeUser(true);
+    }
+  };
 
   // Handle user state changes
   function onAuthStateChanged(user) {
     console.log('Auth state changed:', user ? 'User logged in' : 'User logged out');
     console.log('User details:', user);
     setUser(user);
+    
+    if (user) {
+      checkUserOnboardingStatus(user);
+    } else {
+      setIsFirstTimeUser(false);
+    }
+    
     if (initializing) setInitializing(false);
   }
 
@@ -243,7 +266,11 @@ const App = () => {
         <Stack.Navigator screenOptions={{headerShown: false}}>
           {user ? (
             <>
-              <Stack.Screen name="GetStarted" component={GetStartedScreen} />
+              <Stack.Screen 
+                name="GetStarted" 
+                component={GetStartedScreen}
+                initialParams={{ user, isFirstTimeUser }}
+              />
               <Stack.Screen name="MainApp" component={TabNavigator} />
             </>
           ) : (
