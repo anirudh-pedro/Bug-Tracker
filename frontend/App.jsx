@@ -56,7 +56,7 @@ const TabNavigator = ({ route }) => {
           marginTop: 4,
           marginBottom: 2,
         },
-        tabBarActiveTintColor: '#ff6b6b',
+        tabBarActiveTintColor: '#ff9500',
         tabBarInactiveTintColor: '#888888',
         tabBarAllowFontScaling: false,
         tabBarButton: (props) => (
@@ -72,7 +72,7 @@ const TabNavigator = ({ route }) => {
                 paddingHorizontal: 4,
                 borderRadius: 12,
                 marginHorizontal: 2,
-                backgroundColor: props.accessibilityState?.selected ? '#ff6b6b20' : 'transparent',
+                backgroundColor: props.accessibilityState?.selected ? '#ff950020' : 'transparent',
               }
             ]}
             activeOpacity={0.7}
@@ -94,10 +94,10 @@ const TabNavigator = ({ route }) => {
                 justifyContent: 'center',
                 width: 40,
                 height: 40,
-                backgroundColor: '#ff6b6b',
+                backgroundColor: '#ff9500',
                 borderRadius: 20,
                 elevation: 4,
-                shadowColor: '#ff6b6b',
+                shadowColor: '#ff9500',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.3,
                 shadowRadius: 4,
@@ -126,9 +126,9 @@ const TabNavigator = ({ route }) => {
               <Icon 
                 name={iconName} 
                 size={iconSize} 
-                color={focused ? '#ff6b6b' : '#888888'}
+                color={focused ? '#ff9500' : '#888888'}
                 style={{
-                  textShadowColor: focused ? '#ff6b6b' : 'transparent',
+                  textShadowColor: focused ? '#ff9500' : 'transparent',
                   textShadowOffset: { width: 0, height: 0 },
                   textShadowRadius: focused ? 6 : 0,
                 }}
@@ -153,10 +153,10 @@ const TabNavigator = ({ route }) => {
             <Text style={{
               fontSize: 10,
               fontWeight: focused ? '700' : '500',
-              color: focused ? '#ff6b6b' : '#888888',
+              color: focused ? '#ff9500' : '#888888',
               textAlign: 'center',
               marginTop: 2,
-              textShadowColor: focused ? '#ff6b6b40' : 'transparent',
+              textShadowColor: focused ? '#ff950040' : 'transparent',
               textShadowOffset: { width: 0, height: 0 },
               textShadowRadius: focused ? 3 : 0,
             }}>
@@ -179,7 +179,7 @@ const TabNavigator = ({ route }) => {
         options={{
           tabBarBadge: 3, // Example: 3 new bugs
           tabBarBadgeStyle: {
-            backgroundColor: '#ef4444',
+            backgroundColor: '#ff9500',
             color: '#ffffff',
             fontSize: 10,
             fontWeight: '700',
@@ -194,13 +194,6 @@ const TabNavigator = ({ route }) => {
       <Tab.Screen 
         name="CreateProject" 
         component={CreateProjectTab}
-        listeners={({navigation}) => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            // Navigate to Home and trigger modal
-            navigation.navigate('Home', {showCreateModal: true});
-          },
-        })}
         options={{
           tabBarBadge: null,
         }}

@@ -9,6 +9,9 @@ import {
   ScrollView,
   Modal,
   TextInput,
+  FlatList,
+  RefreshControl,
+  Dimensions,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import auth from '@react-native-firebase/auth';
@@ -17,11 +20,191 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const {width: screenWidth} = Dimensions.get('window');
+const isTablet = screenWidth >= 768;
+
 const HomeScreen = ({ navigation, route }) => {
   const user = auth().currentUser;
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const [projectName, setProjectName] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Sample data for stats
+  const statsData = [
+    { id: '1', title: 'Bugs Resolved', count: 24, icon: 'check-circle', color: '#ff9500', bgColor: '#2d1f0a' },
+    { id: '2', title: 'Bugs Reported', count: 12, icon: 'bug-report', color: '#ff9500', bgColor: '#2d1f0a' },
+    { id: '3', title: 'Projects Created', count: 3, icon: 'folder', color: '#ff9500', bgColor: '#2d1f0a' },
+    { id: '4', title: 'Active/Open Bugs', count: 8, icon: 'pending', color: '#ff9500', bgColor: '#2d1f0a' },
+  ];
+
+  // Sample data for trending projects
+  const trendingProjects = [
+    { id: '1', name: 'React E-Commerce', owner: 'john_dev', bugCount: 15, description: 'Full-stack e-commerce app', repo: 'github.com/shop/react-app' },
+    { id: '2', name: 'Mobile Weather App', owner: 'weather_team', bugCount: 8, description: 'React Native weather app', repo: 'github.com/weather/mobile' },
+    { id: '3', name: 'Django Blog API', owner: 'blog_devs', bugCount: 6, description: 'RESTful blog API', repo: 'github.com/blog/api' },
+    { id: '4', name: 'Vue.js Dashboard', owner: 'admin_ui', bugCount: 4, description: 'Admin management panel', repo: 'github.com/admin/vue-dash' },
+  ];
+
+  // Sample data for open bugs
+  const openBugs = [
+    { id: '1', title: 'Authentication timeout error', project: 'React E-Commerce', priority: 'High', lastUpdated: '2h ago', status: 'open' },
+    { id: '2', title: 'UI layout breaks on mobile', project: 'Mobile Weather App', priority: 'Medium', lastUpdated: '4h ago', status: 'open' },
+    { id: '3', title: 'Database connection pooling', project: 'Django Blog API', priority: 'Medium', lastUpdated: '1d ago', status: 'open' },
+    { id: '4', title: 'Memory leak in data processing', project: 'Vue.js Dashboard', priority: 'High', lastUpdated: '2d ago', status: 'open' },
+  ];
+
+  // Sample data for recent contributions
+  const recentContributions = [
+    { id: '1', title: 'Fixed login validation bug', project: 'React E-Commerce', status: 'Resolved', timestamp: '2 hours ago', type: 'fix' },
+    { id: '2', title: 'Submitted PR for API rate limiting', project: 'Django Blog API', status: 'PR Submitted', timestamp: '1 day ago', type: 'pr' },
+    { id: '3', title: 'Reported CSS styling issue', project: 'Mobile Weather App', status: 'Open', timestamp: '3 days ago', type: 'report' },
+    { id: '4', title: 'Working on database optimization', project: 'Vue.js Dashboard', status: 'In Progress', timestamp: '5 days ago', type: 'progress' },
+  ];
+
+  // Pull to refresh handler
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    // Simulate API call
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  }, []);
+
+  // Stats card component
+  const renderStatCard = ({ item, index }) => {
+    const cardWidth = isTablet ? (screenWidth - 80) / 4 : (screenWidth - 48) / 2;
+    
+    return (
+      <TouchableOpacity 
+        style={[
+          styles.statCard, 
+          { 
+            width: cardWidth,
+            backgroundColor: item.bgColor,
+            borderColor: item.color,
+          }
+        ]}
+        onPress={() => handleStatCardPress(item)}
+      >
+        <View style={styles.statIconContainer}>
+          <Icon name={item.icon} size={28} color={item.color} />
+        </View>
+        <Text style={styles.statNumber}>{item.count}</Text>
+        <Text style={styles.statLabel}>{item.title}</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  // Trending project card component
+  const renderProjectCard = ({ item }) => (
+    <TouchableOpacity style={styles.projectCard} onPress={() => handleProjectPress(item)}>
+      <View style={styles.projectHeader}>
+        <Text style={styles.projectName}>{item.name}</Text>
+        <View style={styles.bugCountBadge}>
+          <Text style={styles.bugCountText}>{item.bugCount} bugs</Text>
+        </View>
+      </View>
+      <Text style={styles.projectOwner}>by {item.owner}</Text>
+      <Text style={styles.projectDescription}>{item.description}</Text>
+      <View style={styles.projectFooter}>
+        <Icon name="link" size={14} color="#ff9500" />
+        <Text style={styles.repoText}>{item.repo}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  // Open bug card component
+  const renderBugCard = ({ item }) => (
+    <TouchableOpacity style={styles.bugCard} onPress={() => handleBugPress(item)}>
+      <View style={styles.bugHeader}>
+        <Text style={styles.bugTitle} numberOfLines={2}>{item.title}</Text>
+        <View style={[
+          styles.priorityBadge, 
+          item.priority === 'High' ? styles.priorityHigh : styles.priorityMedium
+        ]}>
+          <Text style={styles.priorityText}>{item.priority}</Text>
+        </View>
+      </View>
+      <Text style={styles.bugProject}>{item.project}</Text>
+      <View style={styles.bugFooter}>
+        <Text style={styles.bugTime}>{item.lastUpdated}</Text>
+        <Icon name="arrow-forward" size={14} color="#888888" />
+      </View>
+    </TouchableOpacity>
+  );
+
+  // Recent contribution card component
+  const renderContributionCard = ({ item }) => {
+    const getStatusColor = (status) => {
+      switch (status) {
+        case 'Resolved': return '#10b981';
+        case 'PR Submitted': return '#f59e0b';
+        case 'Open': return '#ff6b6b';
+        case 'In Progress': return '#667eea';
+        default: return '#888888';
+      }
+    };
+
+    const getStatusIcon = (type) => {
+      switch (type) {
+        case 'fix': return 'check-circle';
+        case 'pr': return 'code';
+        case 'report': return 'bug-report';
+        case 'progress': return 'pending';
+        default: return 'circle';
+      }
+    };
+
+    return (
+      <TouchableOpacity style={styles.contributionCard} onPress={() => handleContributionPress(item)}>
+        <View style={styles.contributionStatusIcon}>
+          <Icon name={getStatusIcon(item.type)} size={16} color={getStatusColor(item.status)} />
+        </View>
+        <View style={styles.contributionContent}>
+          <Text style={styles.contributionTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={styles.contributionProject}>{item.project}</Text>
+          <View style={styles.contributionFooter}>
+            <View style={[
+              styles.contributionStatus,
+              { borderColor: getStatusColor(item.status) }
+            ]}>
+              <Text style={styles.contributionStatusText}>{item.status}</Text>
+            </View>
+            <Text style={styles.contributionTime}>{item.timestamp}</Text>
+          </View>
+        </View>
+        <Icon name="arrow-forward" size={16} color="#ff9500" />
+      </TouchableOpacity>
+    );
+  };
+
+  // Event handlers
+  const handleStatCardPress = (stat) => {
+    console.log('Stat card pressed:', stat.title);
+    // Navigate to detailed view
+  };
+
+  const handleProjectPress = (project) => {
+    console.log('Project pressed:', project.name);
+    // Navigate to project details
+  };
+
+  const handleBugPress = (bug) => {
+    console.log('Bug pressed:', bug.title);
+    // Navigate to bug details
+  };
+
+  const handleContributionPress = (contribution) => {
+    console.log('Contribution pressed:', contribution.title);
+    // Navigate to contribution details
+  };
+
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+    // Implement search logic
+  };
 
   // Check if we should show the create project modal
   useEffect(() => {
@@ -178,25 +361,28 @@ const HomeScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>        
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#ff9500"
+              colors={['#ff9500']}
+            />
+          }
+        >
           <View style={styles.content}>
             {/* Header with Logo and Profile */}
             <View style={styles.topHeader}>
               <View style={styles.logoSection}>
                 <View style={styles.logoContainer}>
                   <View style={styles.logoImageContainer}>
-                    {/* Replace this with actual logo image once added to assets */}
                     <View style={styles.logoPlaceholder}>
-                      <Icon name="bug-report" size={24} color="#667eea" />
+                      <Icon name="bug-report" size={24} color="#ff9500" />
                     </View>
-                    {/* Uncomment this line when you add the actual logo image:
-                    <Image 
-                      source={require('../../assets/images/bug-tracker-logo.png')} 
-                      style={styles.logoImage}
-                      resizeMode="contain"
-                    />
-                    */}
                   </View>
                   <View style={styles.logoText}>
                     <Text style={styles.logoTitle}>BUG TRACKER</Text>
@@ -292,184 +478,98 @@ const HomeScreen = ({ navigation, route }) => {
               <View style={styles.welcomeContent}>
                 <View style={styles.userGreeting}>
                   <Text style={styles.welcomeText}>
-                    Welcome back, {user.displayName || 'User'}!
+                    Welcome back, {user.displayName || 'Developer'}!
                   </Text>
                   <Text style={styles.dateText}>
-                    {new Date().toLocaleDateString('en-US', { 
-                      weekday: 'long', 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
+                    Ready to squash some bugs today?
                   </Text>
                 </View>
               </View>
             </View>
 
-            {/* Quick Stats Cards */}
-            <View style={styles.statsContainer}>
-              <View style={styles.statsRow}>
-                <View style={styles.statCard}>
-                  <Icon name="bug-report" size={28} color="#667eea" />
-                  <Text style={styles.statNumber}>24</Text>
-                  <Text style={styles.statLabel}>Total Bugs</Text>
-                </View>
-                <View style={styles.statCard}>
-                  <Icon name="pending" size={28} color="#f59e0b" />
-                  <Text style={styles.statNumber}>8</Text>
-                  <Text style={styles.statLabel}>In Progress</Text>
+            {/* 1. Stats Section (Overview Cards) */}
+            <View style={styles.statsSection}>
+              <Text style={styles.sectionTitle}>Your Dashboard</Text>
+              <FlatList
+                data={statsData}
+                renderItem={renderStatCard}
+                keyExtractor={(item) => item.id}
+                numColumns={isTablet ? 4 : 2}
+                scrollEnabled={false}
+                contentContainerStyle={styles.statsContainer}
+                columnWrapperStyle={isTablet ? undefined : styles.statsRow}
+              />
+            </View>
+
+            {/* 2. Search + Trending Section */}
+            <View style={styles.searchTrendingSection}>
+              <Text style={styles.sectionTitle}>Trending & Active</Text>
+              
+              {/* Search Bar */}
+              <View style={styles.searchContainer}>
+                <View style={styles.searchBar}>
+                  <Icon name="search" size={20} color="#666666" />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search projects or bugs..."
+                    placeholderTextColor="#666666"
+                    value={searchQuery}
+                    onChangeText={handleSearch}
+                  />
+                  <TouchableOpacity>
+                    <Icon name="tune" size={20} color="#666666" />
+                  </TouchableOpacity>
                 </View>
               </View>
-              <View style={styles.statsRow}>
-                <View style={styles.statCard}>
-                  <Icon name="check-circle" size={28} color="#10b981" />
-                  <Text style={styles.statNumber}>16</Text>
-                  <Text style={styles.statLabel}>Resolved</Text>
+
+              {/* Trending Content */}
+              <View style={[styles.trendingContent, isTablet && styles.trendingContentTablet]}>
+                {/* Trending Projects */}
+                <View style={[styles.trendingColumn, isTablet && styles.trendingColumnTablet]}>
+                  <View style={styles.columnHeader}>
+                    <Text style={styles.columnTitle}>🔥 Trending Projects</Text>
+                  </View>
+                  <FlatList
+                    data={trendingProjects}
+                    renderItem={renderProjectCard}
+                    keyExtractor={(item) => item.id}
+                    scrollEnabled={false}
+                    showsVerticalScrollIndicator={false}
+                  />
                 </View>
-                <View style={styles.statCard}>
-                  <Icon name="priority-high" size={28} color="#ef4444" />
-                  <Text style={styles.statNumber}>3</Text>
-                  <Text style={styles.statLabel}>High Priority</Text>
+
+                {/* Open Bugs */}
+                <View style={[styles.trendingColumn, isTablet && styles.trendingColumnTablet]}>
+                  <View style={styles.columnHeader}>
+                    <Text style={styles.columnTitle}>🚨 Open Bugs</Text>
+                  </View>
+                  <FlatList
+                    data={openBugs}
+                    renderItem={renderBugCard}
+                    keyExtractor={(item) => item.id}
+                    scrollEnabled={false}
+                    showsVerticalScrollIndicator={false}
+                  />
                 </View>
               </View>
             </View>
 
-            {/* Recent Activity */}
-            <View style={styles.sectionContainer}>
+            {/* 3. Recent Contributions Section */}
+            <View style={styles.recentContributionsSection}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Recent Activity</Text>
-                <TouchableOpacity>
-                  <Text style={styles.seeAllText}>See all</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.activityContainer}>
-                <View style={styles.activityItem}>
-                  <View style={styles.activityIcon}>
-                    <Icon name="check-circle" size={16} color="#10b981" />
-                  </View>
-                  <View style={styles.activityContent}>
-                    <Text style={styles.activityText}>Bug #101 resolved by John Doe</Text>
-                    <Text style={styles.activityTime}>2 hours ago</Text>
-                  </View>
-                </View>
-                <View style={styles.activityItem}>
-                  <View style={styles.activityIcon}>
-                    <Icon name="add" size={16} color="#667eea" />
-                  </View>
-                  <View style={styles.activityContent}>
-                    <Text style={styles.activityText}>New bug #125 reported by Sarah Smith</Text>
-                    <Text style={styles.activityTime}>4 hours ago</Text>
-                  </View>
-                </View>
-                <View style={styles.activityItem}>
-                  <View style={styles.activityIcon}>
-                    <Icon name="assignment" size={16} color="#f59e0b" />
-                  </View>
-                  <View style={styles.activityContent}>
-                    <Text style={styles.activityText}>Bug #98 assigned to you</Text>
-                    <Text style={styles.activityTime}>1 day ago</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            {/* Active Projects */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Active Projects</Text>
+                <Text style={styles.sectionTitle}>Your Recent Contributions</Text>
                 <TouchableOpacity>
                   <Text style={styles.seeAllText}>View all</Text>
                 </TouchableOpacity>
               </View>
-              <View style={styles.projectsContainer}>
-                <View style={styles.projectCard}>
-                  <View style={styles.projectHeader}>
-                    <Text style={styles.projectName}>Mobile App</Text>
-                    <View style={styles.bugCount}>
-                      <Text style={styles.bugCountText}>5 bugs</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.projectDescription}>React Native bug tracker app</Text>
-                </View>
-                <View style={styles.projectCard}>
-                  <View style={styles.projectHeader}>
-                    <Text style={styles.projectName}>Web Dashboard</Text>
-                    <View style={styles.bugCount}>
-                      <Text style={styles.bugCountText}>3 bugs</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.projectDescription}>Admin panel for bug management</Text>
-                </View>
-              </View>
-            </View>
 
-            {/* Assigned to Me */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Assigned to Me</Text>
-                <View style={styles.assignedBadge}>
-                  <Text style={styles.assignedBadgeText}>4</Text>
-                </View>
-              </View>
-              <View style={styles.assignedContainer}>
-                <View style={styles.assignedItem}>
-                  <View style={styles.assignedContent}>
-                    <Text style={styles.assignedTitle}>Login authentication issue</Text>
-                    <Text style={styles.assignedId}>#98</Text>
-                  </View>
-                  <View style={[styles.statusBadge, styles.statusPending]}>
-                    <Text style={styles.statusText}>Pending</Text>
-                  </View>
-                </View>
-                <View style={styles.assignedItem}>
-                  <View style={styles.assignedContent}>
-                    <Text style={styles.assignedTitle}>UI layout broken on mobile</Text>
-                    <Text style={styles.assignedId}>#112</Text>
-                  </View>
-                  <View style={[styles.statusBadge, styles.statusInProgress]}>
-                    <Text style={styles.statusText}>In Progress</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            {/* Quick Actions */}
-            <View style={styles.quickActionsContainer}>
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
-              <View style={styles.actionsGrid}>
-                <TouchableOpacity style={styles.actionButton}>
-                  <Icon name="add" size={24} color="#ffffff" />
-                  <Text style={styles.actionButtonText}>Report Bug</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton}>
-                  <Icon name="search" size={24} color="#ffffff" />
-                  <Text style={styles.actionButtonText}>Search Bugs</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton}>
-                  <Icon name="bar-chart" size={24} color="#ffffff" />
-                  <Text style={styles.actionButtonText}>View Reports</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton}>
-                  <Icon name="folder" size={24} color="#ffffff" />
-                  <Text style={styles.actionButtonText}>Projects</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Notifications */}
-            <View style={styles.notificationsContainer}>
-              <View style={styles.notificationItem}>
-                <Icon name="warning" size={20} color="#f59e0b" />
-                <Text style={styles.notificationText}>
-                  2 overdue bugs require attention
-                </Text>
-              </View>
-              <View style={styles.notificationItem}>
-                <Icon name="notification-important" size={20} color="#667eea" />
-                <Text style={styles.notificationText}>
-                  1 new bug assigned to you
-                </Text>
-              </View>
+              <FlatList
+                data={recentContributions}
+                renderItem={renderContributionCard}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+                showsVerticalScrollIndicator={false}
+              />
             </View>
           </View>
         </ScrollView>
@@ -484,7 +584,6 @@ const HomeScreen = ({ navigation, route }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            {/* Close Button */}
             <TouchableOpacity 
               style={styles.closeButton}
               onPress={closeCreateProjectModal}
@@ -492,12 +591,10 @@ const HomeScreen = ({ navigation, route }) => {
               <Icon name="close" size={24} color="#ffffff" />
             </TouchableOpacity>
 
-            {/* Rocket Icon */}
             <View style={styles.rocketContainer}>
               <Icon name="rocket-launch" size={40} color="#ffffff" />
             </View>
 
-            {/* Modal Content */}
             <Text style={styles.modalTitle}>Create your first project</Text>
             
             <View style={styles.inputContainer}>
@@ -511,7 +608,6 @@ const HomeScreen = ({ navigation, route }) => {
               />
             </View>
 
-            {/* Create Button */}
             <TouchableOpacity 
               style={styles.createButton}
               onPress={handleCreateProject}
@@ -707,7 +803,7 @@ const styles = StyleSheet.create({
   
   // Welcome Header
   welcomeHeader: {
-    marginBottom: 20,
+    marginBottom: 24,
     paddingHorizontal: 4,
   },
   welcomeContent: {
@@ -717,127 +813,123 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   welcomeText: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#ffffff',
     marginBottom: 4,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   dateText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#666666',
-    fontWeight: '400',
+    fontWeight: '500',
   },
 
-  // Stats Cards
+  // 1. Stats Section (Overview Cards)
+  statsSection: {
+    marginBottom: 32,
+  },
   statsContainer: {
-    marginBottom: 24,
+    paddingTop: 16,
   },
   statsRow: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
   statCard: {
     backgroundColor: '#111111',
-    borderRadius: 8,
+    borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    flex: 0.48,
-    borderWidth: 1,
-    borderColor: '#222222',
+    marginBottom: 12,
+    borderWidth: 2,
+    // Shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  statIconContainer: {
+    marginBottom: 12,
   },
   statNumber: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 28,
+    fontWeight: '800',
     color: '#ffffff',
-    marginTop: 6,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   statLabel: {
-    fontSize: 11,
-    color: '#666666',
-    fontWeight: '500',
+    fontSize: 12,
+    color: '#cccccc',
+    fontWeight: '600',
     textAlign: 'center',
   },
 
-  // Section Containers
-  sectionContainer: {
-    marginBottom: 24,
+  // 2. Search + Trending Section
+  searchTrendingSection: {
+    marginBottom: 32,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 4,
+  searchContainer: {
+    marginTop: 16,
+    marginBottom: 20,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-    letterSpacing: -0.1,
-  },
-  seeAllText: {
-    fontSize: 12,
-    color: '#888888',
-    fontWeight: '500',
-  },
-
-  // Recent Activity
-  activityContainer: {
+  searchBar: {
     backgroundColor: '#111111',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#222222',
   },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
-  },
-  activityIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#222222',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  activityContent: {
+  searchInput: {
     flex: 1,
-  },
-  activityText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#ffffff',
-    fontWeight: '400',
-    marginBottom: 2,
-  },
-  activityTime: {
-    fontSize: 11,
-    color: '#666666',
+    marginLeft: 12,
     fontWeight: '400',
   },
 
-  // Active Projects
-  projectsContainer: {
-    gap: 8,
+  // Trending Content Layout
+  trendingContent: {
+    flexDirection: 'column',
+    gap: 24,
   },
+  trendingContentTablet: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  trendingColumn: {
+    flex: 1,
+  },
+  trendingColumnTablet: {
+    flex: 1,
+  },
+  columnHeader: {
+    marginBottom: 12,
+  },
+  columnTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: -0.1,
+  },
+
+  // Project Cards
   projectCard: {
     backgroundColor: '#111111',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 14,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#222222',
   },
   projectHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 6,
   },
   projectName: {
@@ -845,8 +937,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#ffffff',
     flex: 1,
+    marginRight: 8,
   },
-  bugCount: {
+  projectOwner: {
+    fontSize: 11,
+    color: '#888888',
+    fontWeight: '500',
+    marginBottom: 6,
+  },
+  bugCountBadge: {
     backgroundColor: '#222222',
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -856,126 +955,169 @@ const styles = StyleSheet.create({
   },
   bugCountText: {
     fontSize: 10,
-    color: '#888888',
-    fontWeight: '500',
+    color: '#ff6b6b',
+    fontWeight: '600',
   },
   projectDescription: {
     fontSize: 12,
+    color: '#888888',
+    fontWeight: '400',
+    marginBottom: 10,
+    lineHeight: 16,
+  },
+  projectFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  repoText: {
+    fontSize: 11,
+    color: '#667eea',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+
+  // Bug Cards
+  bugCard: {
+    backgroundColor: '#111111',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#222222',
+  },
+  bugHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  bugTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#ffffff',
+    flex: 1,
+    marginRight: 8,
+    lineHeight: 18,
+  },
+  priorityBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  priorityHigh: {
+    backgroundColor: '#2d1b1b',
+    borderColor: '#ff4444',
+  },
+  priorityMedium: {
+    backgroundColor: '#2d2416',
+    borderColor: '#f59e0b',
+  },
+  priorityText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  bugProject: {
+    fontSize: 11,
+    color: '#888888',
+    fontWeight: '500',
+    marginBottom: 10,
+  },
+  bugFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bugTime: {
+    fontSize: 10,
     color: '#666666',
     fontWeight: '400',
   },
 
-  // Assigned to Me
-  assignedBadge: {
+  // 3. Recent Contributions Section
+  recentContributionsSection: {
+    marginBottom: 32,
+  },
+  contributionCard: {
+    backgroundColor: '#111111',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#222222',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  contributionStatusIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#222222',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  contributionContent: {
+    flex: 1,
+  },
+  contributionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  contributionProject: {
+    fontSize: 12,
+    color: '#888888',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  contributionFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  contributionStatus: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#333333',
+    backgroundColor: 'transparent',
   },
-  assignedBadgeText: {
+  contributionStatusText: {
     fontSize: 10,
-    color: '#ff4444',
     fontWeight: '600',
-  },
-  assignedContainer: {
-    backgroundColor: '#111111',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#222222',
-    gap: 8,
-  },
-  assignedItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  assignedContent: {
-    flex: 1,
-    marginRight: 10,
-  },
-  assignedTitle: {
-    fontSize: 13,
     color: '#ffffff',
-    fontWeight: '500',
-    marginBottom: 2,
   },
-  assignedId: {
+  contributionTime: {
     fontSize: 11,
     color: '#666666',
     fontWeight: '400',
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  statusPending: {
-    backgroundColor: '#222222',
-    borderColor: '#333333',
-  },
-  statusInProgress: {
-    backgroundColor: '#222222',
-    borderColor: '#333333',
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: '#888888',
-  },
 
-  // Quick Actions
-  quickActionsContainer: {
-    marginBottom: 24,
+  // Section Containers
+  sectionContainer: {
+    marginBottom: 28,
   },
-  actionsGrid: {
+  sectionHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginTop: 12,
-  },
-  actionButton: {
-    backgroundColor: '#222222',
-    width: '48%',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#333333',
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
-  actionButtonText: {
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
     color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 6,
-    letterSpacing: 0.1,
+    letterSpacing: -0.2,
   },
-
-  // Notifications
-  notificationsContainer: {
-    gap: 8,
-  },
-  notificationItem: {
-    backgroundColor: '#111111',
-    borderRadius: 8,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#222222',
-  },
-  notificationText: {
-    fontSize: 12,
-    color: '#ffffff',
-    fontWeight: '400',
-    marginLeft: 10,
-    flex: 1,
+  seeAllText: {
+    fontSize: 13,
+    color: '#ff6b6b',
+    fontWeight: '600',
   },
 
   errorText: {

@@ -23,7 +23,7 @@ const ProjectsScreen = () => {
       bugs: 15,
       members: 5,
       progress: 75,
-      color: '#667eea',
+      color: '#ff9500',
       lastUpdated: '2 hours ago',
     },
     {
@@ -34,7 +34,7 @@ const ProjectsScreen = () => {
       bugs: 8,
       members: 3,
       progress: 60,
-      color: '#10b981',
+      color: '#ff9500',
       lastUpdated: '1 day ago',
     },
     {
@@ -45,7 +45,7 @@ const ProjectsScreen = () => {
       bugs: 2,
       members: 2,
       progress: 100,
-      color: '#f59e0b',
+      color: '#ff9500',
       lastUpdated: '3 days ago',
     },
     {
@@ -56,7 +56,7 @@ const ProjectsScreen = () => {
       bugs: 12,
       members: 4,
       progress: 40,
-      color: '#ef4444',
+      color: '#ff9500',
       lastUpdated: '1 week ago',
     },
   ];
@@ -65,8 +65,8 @@ const ProjectsScreen = () => {
     switch (status) {
       case 'Active': return '#10b981';
       case 'Completed': return '#667eea';
-      case 'On Hold': return '#ef4444';
-      default: return '#a0a0a0';
+      case 'On Hold': return '#ff6b6b';
+      default: return '#888888';
     }
   };
 
@@ -76,7 +76,7 @@ const ProjectsScreen = () => {
   );
 
   return (
-    <LinearGradient colors={['#0a0a0a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {/* Header */}
@@ -88,17 +88,17 @@ const ProjectsScreen = () => {
           {/* Search Bar */}
           <View style={styles.searchContainer}>
             <View style={styles.searchBar}>
-              <Icon name="search" size={20} color="#a0a0a0" />
+              <Icon name="search" size={20} color="#666666" />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search projects..."
-                placeholderTextColor="#a0a0a0"
+                placeholderTextColor="#666666"
                 value={searchText}
                 onChangeText={setSearchText}
               />
               {searchText ? (
                 <TouchableOpacity onPress={() => setSearchText('')}>
-                  <Icon name="clear" size={20} color="#a0a0a0" />
+                  <Icon name="clear" size={20} color="#666666" />
                 </TouchableOpacity>
               ) : null}
             </View>
@@ -106,20 +106,20 @@ const ProjectsScreen = () => {
 
           {/* Quick Stats */}
           <View style={styles.statsContainer}>
-            <View style={styles.statCard}>
-              <Icon name="folder" size={24} color="#667eea" />
+            <View style={[styles.statCard, styles.totalProjectsCard]}>
+              <Icon name="folder" size={24} color="#ff9500" />
               <Text style={styles.statNumber}>{projects.length}</Text>
               <Text style={styles.statLabel}>Total Projects</Text>
             </View>
-            <View style={styles.statCard}>
-              <Icon name="play-arrow" size={24} color="#10b981" />
+            <View style={[styles.statCard, styles.activeProjectsCard]}>
+              <Icon name="play-arrow" size={24} color="#ff9500" />
               <Text style={styles.statNumber}>
                 {projects.filter(p => p.status === 'Active').length}
               </Text>
               <Text style={styles.statLabel}>Active</Text>
             </View>
-            <View style={styles.statCard}>
-              <Icon name="bug-report" size={24} color="#ef4444" />
+            <View style={[styles.statCard, styles.totalBugsCard]}>
+              <Icon name="bug-report" size={24} color="#ff9500" />
               <Text style={styles.statNumber}>
                 {projects.reduce((sum, p) => sum + p.bugs, 0)}
               </Text>
@@ -145,7 +145,7 @@ const ProjectsScreen = () => {
                     <Text style={styles.projectName}>{project.name}</Text>
                     <View style={[
                       styles.statusBadge,
-                      {backgroundColor: getStatusColor(project.status) + '20'}
+                      {borderColor: getStatusColor(project.status)}
                     ]}>
                       <Text style={[
                         styles.statusText,
@@ -180,7 +180,7 @@ const ProjectsScreen = () => {
                 {/* Project Stats */}
                 <View style={styles.projectStats}>
                   <View style={styles.projectStat}>
-                    <Icon name="bug-report" size={16} color="#ef4444" />
+                    <Icon name="bug-report" size={16} color="#ff6b6b" />
                     <Text style={styles.projectStatText}>{project.bugs} bugs</Text>
                   </View>
                   <View style={styles.projectStat}>
@@ -188,7 +188,7 @@ const ProjectsScreen = () => {
                     <Text style={styles.projectStatText}>{project.members} members</Text>
                   </View>
                   <View style={styles.projectStat}>
-                    <Icon name="schedule" size={16} color="#a0a0a0" />
+                    <Icon name="schedule" size={16} color="#888888" />
                     <Text style={styles.projectStatText}>{project.lastUpdated}</Text>
                   </View>
                 </View>
@@ -199,7 +199,7 @@ const ProjectsScreen = () => {
           {/* Empty State */}
           {filteredProjects.length === 0 && searchText && (
             <View style={styles.emptyState}>
-              <Icon name="search-off" size={48} color="#a0a0a0" />
+              <Icon name="search-off" size={48} color="#666666" />
               <Text style={styles.emptyStateTitle}>No projects found</Text>
               <Text style={styles.emptyStateText}>
                 Try adjusting your search terms
@@ -208,83 +208,102 @@ const ProjectsScreen = () => {
           )}
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000000',
   },
   safeArea: {
     flex: 1,
+    backgroundColor: '#000000',
   },
   scrollView: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 25,
-    paddingTop: 20,
+    marginBottom: 24,
+    paddingTop: 16,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 28,
+    fontWeight: '700',
     color: '#ffffff',
     marginBottom: 8,
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#a0a0a0',
+    fontSize: 14,
+    color: '#666666',
     fontWeight: '500',
   },
   searchContainer: {
-    marginBottom: 25,
+    marginBottom: 28,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#111111',
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#222222',
     gap: 12,
   },
   searchInput: {
     flex: 1,
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '400',
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 25,
+    marginBottom: 32,
     gap: 12,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
+    backgroundColor: '#111111',
+    borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#333333',
+    borderWidth: 2,
     gap: 8,
+    // Shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  totalProjectsCard: {
+    backgroundColor: '#1b1f2d',
+    borderColor: '#667eea',
+  },
+  activeProjectsCard: {
+    backgroundColor: '#0d2818',
+    borderColor: '#10b981',
+  },
+  totalBugsCard: {
+    backgroundColor: '#2d1b1b',
+    borderColor: '#ff6b6b',
   },
   statNumber: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
     color: '#ffffff',
   },
   statLabel: {
     fontSize: 12,
-    color: '#a0a0a0',
-    fontWeight: '500',
+    color: '#cccccc',
+    fontWeight: '600',
     textAlign: 'center',
   },
   projectsContainer: {
@@ -295,16 +314,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#ffffff',
+    letterSpacing: -0.2,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#667eea',
+    backgroundColor: '#ff6b6b',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -316,12 +337,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   projectCard: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#111111',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#222222',
   },
   projectHeader: {
     marginBottom: 16,
@@ -338,24 +359,27 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   projectName: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#ffffff',
     flex: 1,
   },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    backgroundColor: 'transparent',
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
   },
   projectDescription: {
-    fontSize: 14,
-    color: '#a0a0a0',
-    lineHeight: 20,
+    fontSize: 13,
+    color: '#888888',
+    lineHeight: 18,
+    fontWeight: '400',
   },
   progressContainer: {
     marginBottom: 16,
@@ -367,18 +391,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   progressLabel: {
-    fontSize: 14,
-    color: '#a0a0a0',
+    fontSize: 12,
+    color: '#888888',
     fontWeight: '500',
   },
   progressPercent: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#ffffff',
     fontWeight: '600',
   },
   progressBar: {
     height: 6,
-    backgroundColor: '#333333',
+    backgroundColor: '#222222',
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -398,8 +422,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   projectStatText: {
-    fontSize: 12,
-    color: '#a0a0a0',
+    fontSize: 11,
+    color: '#888888',
     fontWeight: '500',
   },
   emptyState: {
@@ -407,15 +431,15 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   emptyStateTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateText: {
-    fontSize: 14,
-    color: '#a0a0a0',
+    fontSize: 13,
+    color: '#666666',
     textAlign: 'center',
   },
 });

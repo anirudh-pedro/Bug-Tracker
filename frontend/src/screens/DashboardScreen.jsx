@@ -7,15 +7,14 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const DashboardScreen = () => {
   const stats = [
-    {id: 1, title: 'Total Bugs', count: 42, icon: 'bug-report', color: '#ef4444'},
-    {id: 2, title: 'Open Issues', count: 15, icon: 'error', color: '#f59e0b'},
+    {id: 1, title: 'Total Bugs', count: 42, icon: 'bug-report', color: '#ff6b6b'},
+    {id: 2, title: 'Open Issues', count: 15, icon: 'error', color: '#ff6b6b'},
     {id: 3, title: 'Resolved', count: 27, icon: 'check-circle', color: '#10b981'},
-    {id: 4, title: 'In Progress', count: 8, icon: 'schedule', color: '#3b82f6'},
+    {id: 4, title: 'In Progress', count: 8, icon: 'schedule', color: '#667eea'},
   ];
 
   const recentBugs = [
@@ -25,7 +24,7 @@ const DashboardScreen = () => {
   ];
 
   return (
-    <LinearGradient colors={['#0a0a0a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {/* Header */}
@@ -57,8 +56,8 @@ const DashboardScreen = () => {
                     <Text style={styles.bugTitle}>{bug.title}</Text>
                     <View style={[
                       styles.priorityBadge,
-                      {backgroundColor: bug.priority === 'Critical' ? '#ef4444' : 
-                                      bug.priority === 'High' ? '#f59e0b' : '#10b981'}
+                      {backgroundColor: bug.priority === 'Critical' ? '#ff6b6b' : 
+                                      bug.priority === 'High' ? '#ff6b6b' : '#10b981'}
                     ]}>
                       <Text style={styles.priorityText}>{bug.priority}</Text>
                     </View>
@@ -83,13 +82,14 @@ const DashboardScreen = () => {
           </View>
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000000',
   },
   safeArea: {
     flex: 1,
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: '#a0a0a0',
+    color: '#888888',
     fontWeight: '500',
   },
   statsContainer: {
@@ -122,14 +122,14 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   statCard: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#111111',
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
     width: '48%',
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#333333',
+    borderWidth: 2,
+    borderColor: '#222222',
   },
   statIcon: {
     width: 48,
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   },
   statTitle: {
     fontSize: 12,
-    color: '#a0a0a0',
+    color: '#888888',
     textAlign: 'center',
     fontWeight: '500',
   },
@@ -164,11 +164,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   bugCard: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#111111',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#222222',
   },
   bugHeader: {
     flexDirection: 'row',
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   },
   bugStatus: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#888888',
   },
   actionsContainer: {
     gap: 16,
