@@ -11,7 +11,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-const ProjectsScreen = () => {
+const ProjectsScreen = ({navigation}) => {
   const [searchText, setSearchText] = useState('');
 
   const projects = [
@@ -131,14 +131,21 @@ const ProjectsScreen = () => {
           <View style={styles.projectsContainer}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Your Projects</Text>
-              <TouchableOpacity style={styles.addButton}>
+              <TouchableOpacity 
+                style={styles.addButton}
+                onPress={() => navigation.navigate('CreateProject')}
+              >
                 <Icon name="add" size={20} color="#ffffff" />
                 <Text style={styles.addButtonText}>New</Text>
               </TouchableOpacity>
             </View>
 
             {filteredProjects.map((project) => (
-              <TouchableOpacity key={project.id} style={styles.projectCard}>
+              <TouchableOpacity 
+                key={project.id} 
+                style={styles.projectCard}
+                onPress={() => navigation.navigate('Bugs', { projectId: project.id, projectName: project.name })}
+              >
                 <View style={styles.projectHeader}>
                   <View style={styles.projectTitleRow}>
                     <View style={[styles.projectColorDot, {backgroundColor: project.color}]} />

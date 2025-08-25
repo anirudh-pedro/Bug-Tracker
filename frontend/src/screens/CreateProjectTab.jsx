@@ -8,7 +8,8 @@ import {
   TouchableOpacity, 
   Alert,
   Modal,
-  Dimensions
+  Dimensions,
+  Image
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -20,22 +21,58 @@ const CreateBugReportScreen = ({navigation}) => {
   const [bugDescription, setBugDescription] = useState('');
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedPriority, setSelectedPriority] = useState('Medium');
+  const [selectedSeverity, setSelectedSeverity] = useState('Medium');
   const [selectedCategory, setSelectedCategory] = useState('Bug');
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
+  const [showSeverityDropdown, setShowSeverityDropdown] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [stepsToReproduce, setStepsToReproduce] = useState('');
+  const [repositoryUrl, setRepositoryUrl] = useState('');
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [showAttachmentModal, setShowAttachmentModal] = useState(false);
+  const [expectedBehavior, setExpectedBehavior] = useState('');
+  const [actualBehavior, setActualBehavior] = useState('');
+  const [environment, setEnvironment] = useState('');
 
   // Sample projects - in real app, this would come from your data source
   const projects = [
-    { id: 1, name: 'Bug Tracker Mobile App', status: 'Active' },
-    { id: 2, name: 'E-commerce Platform', status: 'Active' },
-    { id: 3, name: 'Social Media Dashboard', status: 'Active' },
-    { id: 4, name: 'Data Analytics Dashboard', status: 'On Hold' },
+    { id: 1, name: 'Bug Tracker Mobile App', status: 'Active', repo: 'https://github.com/user/bug-tracker' },
+    { id: 2, name: 'E-commerce Platform', status: 'Active', repo: 'https://github.com/user/ecommerce' },
+    { id: 3, name: 'Social Media Dashboard', status: 'Active', repo: 'https://gitlab.com/user/social-dashboard' },
+    { id: 4, name: 'Data Analytics Dashboard', status: 'On Hold', repo: '' },
   ];
 
   const priorities = ['Low', 'Medium', 'High', 'Critical'];
-  const categories = ['Bug', 'Feature Request', 'Enhancement', 'Documentation'];
+  const severities = ['Minor', 'Medium', 'Major', 'Critical'];
+  const categories = ['Bug', 'Feature Request', 'Enhancement', 'Documentation', 'Performance', 'Security'];
+
+  const selectImage = () => {
+    Alert.alert(
+      'Select Image',
+      'Image picker will be implemented with react-native-image-picker library',
+      [{text: 'OK'}]
+    );
+  };
+
+  const takePhoto = async () => {
+    Alert.alert(
+      'Take Photo',
+      'Camera functionality will be implemented with react-native-image-picker library',
+      [{text: 'OK'}]
+    );
+  };
+
+  const removeAttachment = (id) => {
+    setAttachedFiles(attachedFiles.filter(file => file.id !== id));
+  };
+
+  const validateRepositoryUrl = (url) => {
+    if (!url) return true; // Optional field
+    const githubPattern = /^https:\/\/github\.com\/[\w\-\.]+\/[\w\-\.]+\/?$/;
+    const gitlabPattern = /^https:\/\/gitlab\.com\/[\w\-\.]+\/[\w\-\.]+\/?$/;
+    return githubPattern.test(url) || gitlabPattern.test(url);
+  };
 
   const handleSubmitBug = () => {
     if (!bugTitle.trim()) {
@@ -50,28 +87,77 @@ const CreateBugReportScreen = ({navigation}) => {
       Alert.alert('Error', 'Please select a project');
       return;
     }
+    if (!stepsToReproduce.trim()) {
+      Alert.alert('Error', 'Please provide steps to reproduce the bug');
+      return;
+    }
+    if (repositoryUrl && !validateRepositoryUrl(repositoryUrl)) {
+      Alert.alert('Error', 'Please enter a valid GitHub or GitLab repository URL');
+      return;
+    }
+
+    // Create bug report object
+    const bugReport = {
+      id: Date.now(),
+      title: bugTitle.trim(),
+      description: bugDescription.trim(),
+      stepsToReproduce: stepsToReproduce.trim(),
+      expectedBehavior: expectedBehavior.trim(),
+      actualBehavior: actualBehavior.trim(),
+      environment: environment.trim(),
+      project: selectedProject,
+      priority: selectedPriority,
+      severity: selectedSeverity,
+      category: selectedCategory,
+      repositoryUrl: repositoryUrl.trim(),
+      attachments: attachedFiles,
+      status: 'Open',
+      reportedBy: 'Current User', // In real app, get from auth
+      reportedAt: new Date().toISOString(),
+      points: 0,
+      assignedTo: null,
+      comments: [],
+      tags: []
+    };
 
     // Here you would typically send the data to your backend
+    console.log('Submitting bug report:', bugReport);
+    
     Alert.alert(
       'Success', 
-      'Bug report submitted successfully!',
+      'Bug report submitted successfully!\n\nYour bug is now visible in the global feed and available for community collaboration.',
       [
+        {
+          text: 'View Bugs',
+          onPress: () => {
+            resetForm();
+            navigation.navigate('Bugs');
+          }
+        },
         {
           text: 'OK',
           onPress: () => {
-            // Reset form
-            setBugTitle('');
-            setBugDescription('');
-            setSelectedProject('');
-            setStepsToReproduce('');
-            setSelectedPriority('Medium');
-            setSelectedCategory('Bug');
-            // Navigate back to home
+            resetForm();
             navigation.navigate('Home');
           }
         }
       ]
     );
+  };
+
+  const resetForm = () => {
+    setBugTitle('');
+    setBugDescription('');
+    setSelectedProject('');
+    setStepsToReproduce('');
+    setExpectedBehavior('');
+    setActualBehavior('');
+    setEnvironment('');
+    setRepositoryUrl('');
+    setAttachedFiles([]);
+    setSelectedPriority('Medium');
+    setSelectedSeverity('Medium');
+    setSelectedCategory('Bug');
   };
 
   const getPriorityColor = (priority) => {
@@ -80,6 +166,16 @@ const CreateBugReportScreen = ({navigation}) => {
       case 'High': return '#ff9500';
       case 'Medium': return '#ffa502';
       case 'Low': return '#2ed573';
+      default: return '#888888';
+    }
+  };
+
+  const getSeverityColor = (severity) => {
+    switch (severity) {
+      case 'Critical': return '#ff4757';
+      case 'Major': return '#ff6b35';
+      case 'Medium': return '#ffa502';
+      case 'Minor': return '#2ed573';
       default: return '#888888';
     }
   };
@@ -133,7 +229,7 @@ const CreateBugReportScreen = ({navigation}) => {
               </TouchableOpacity>
             </View>
 
-            {/* Priority and Category Row */}
+            {/* Priority and Severity Row */}
             <View style={styles.rowContainer}>
               <View style={[styles.inputGroup, styles.halfWidth]}>
                 <Text style={styles.label}>Priority</Text>
@@ -150,15 +246,30 @@ const CreateBugReportScreen = ({navigation}) => {
               </View>
 
               <View style={[styles.inputGroup, styles.halfWidth]}>
-                <Text style={styles.label}>Category</Text>
+                <Text style={styles.label}>Severity</Text>
                 <TouchableOpacity 
                   style={styles.dropdown}
-                  onPress={() => setShowCategoryDropdown(true)}
+                  onPress={() => setShowSeverityDropdown(true)}
                 >
-                  <Text style={styles.dropdownText}>{selectedCategory}</Text>
+                  <View style={styles.priorityContainer}>
+                    <View style={[styles.priorityDot, {backgroundColor: getSeverityColor(selectedSeverity)}]} />
+                    <Text style={styles.dropdownText}>{selectedSeverity}</Text>
+                  </View>
                   <Icon name="arrow-drop-down" size={24} color="#888888" />
                 </TouchableOpacity>
               </View>
+            </View>
+
+            {/* Category */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Category</Text>
+              <TouchableOpacity 
+                style={styles.dropdown}
+                onPress={() => setShowCategoryDropdown(true)}
+              >
+                <Text style={styles.dropdownText}>{selectedCategory}</Text>
+                <Icon name="arrow-drop-down" size={24} color="#888888" />
+              </TouchableOpacity>
             </View>
 
             {/* Bug Description */}
@@ -180,7 +291,9 @@ const CreateBugReportScreen = ({navigation}) => {
 
             {/* Steps to Reproduce */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Steps to Reproduce</Text>
+              <Text style={styles.label}>
+                Steps to Reproduce <Text style={styles.required}>*</Text>
+              </Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="1. Go to...&#10;2. Click on...&#10;3. Observe..."
@@ -191,6 +304,98 @@ const CreateBugReportScreen = ({navigation}) => {
                 numberOfLines={4}
                 textAlignVertical="top"
               />
+            </View>
+
+            {/* Expected vs Actual Behavior */}
+            <View style={styles.rowContainer}>
+              <View style={[styles.inputGroup, styles.halfWidth]}>
+                <Text style={styles.label}>Expected Behavior</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="What should happen..."
+                  placeholderTextColor="#666666"
+                  value={expectedBehavior}
+                  onChangeText={setExpectedBehavior}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </View>
+              <View style={[styles.inputGroup, styles.halfWidth]}>
+                <Text style={styles.label}>Actual Behavior</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="What actually happened..."
+                  placeholderTextColor="#666666"
+                  value={actualBehavior}
+                  onChangeText={setActualBehavior}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </View>
+            </View>
+
+            {/* Environment */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Environment</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="OS, Browser/App version, Device model..."
+                placeholderTextColor="#666666"
+                value={environment}
+                onChangeText={setEnvironment}
+              />
+            </View>
+
+            {/* Repository URL */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                Repository URL <Text style={styles.optional}>(Optional)</Text>
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="https://github.com/username/repository"
+                placeholderTextColor="#666666"
+                value={repositoryUrl}
+                onChangeText={setRepositoryUrl}
+                autoCapitalize="none"
+                keyboardType="url"
+              />
+              <Text style={styles.helperText}>
+                Link to GitHub/GitLab repository for community collaboration
+              </Text>
+            </View>
+
+            {/* Attachments */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                Attachments <Text style={styles.optional}>(Optional)</Text>
+              </Text>
+              <TouchableOpacity 
+                style={styles.attachmentButton}
+                onPress={() => setShowAttachmentModal(true)}
+              >
+                <Icon name="attach-file" size={20} color="#ff9500" />
+                <Text style={styles.attachmentButtonText}>Add Screenshots, Logs, or Files</Text>
+                <Icon name="add" size={20} color="#ff9500" />
+              </TouchableOpacity>
+              
+              {attachedFiles.length > 0 && (
+                <View style={styles.attachmentsList}>
+                  {attachedFiles.map((file) => (
+                    <View key={file.id} style={styles.attachmentItem}>
+                      <Icon name="image" size={16} color="#ff9500" />
+                      <Text style={styles.attachmentName} numberOfLines={1}>
+                        {file.name}
+                      </Text>
+                      <TouchableOpacity onPress={() => removeAttachment(file.id)}>
+                        <Icon name="close" size={16} color="#ff4757" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
 
             {/* Submit Button */}
@@ -298,6 +503,84 @@ const CreateBugReportScreen = ({navigation}) => {
               ))}
             </View>
           </TouchableOpacity>
+        </Modal>
+
+        {/* Severity Selection Modal */}
+        <Modal
+          visible={showSeverityDropdown}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowSeverityDropdown(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowSeverityDropdown(false)}
+          >
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Severity</Text>
+              {severities.map((severity) => (
+                <TouchableOpacity
+                  key={severity}
+                  style={styles.modalItem}
+                  onPress={() => {
+                    setSelectedSeverity(severity);
+                    setShowSeverityDropdown(false);
+                  }}
+                >
+                  <View style={styles.priorityContainer}>
+                    <View style={[styles.priorityDot, {backgroundColor: getSeverityColor(severity)}]} />
+                    <Text style={styles.modalItemText}>{severity}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Attachment Modal */}
+        <Modal
+          visible={showAttachmentModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowAttachmentModal(false)}
+        >
+          <View style={styles.attachmentModalOverlay}>
+            <View style={styles.attachmentModalContent}>
+              <View style={styles.attachmentModalHeader}>
+                <Text style={styles.attachmentModalTitle}>Add Attachment</Text>
+                <TouchableOpacity onPress={() => setShowAttachmentModal(false)}>
+                  <Icon name="close" size={24} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.attachmentOptions}>
+                <TouchableOpacity 
+                  style={styles.attachmentOption}
+                  onPress={() => {
+                    setShowAttachmentModal(false);
+                    takePhoto();
+                  }}
+                >
+                  <Icon name="camera-alt" size={32} color="#ff9500" />
+                  <Text style={styles.attachmentOptionText}>Take Photo</Text>
+                  <Text style={styles.attachmentOptionSubtext}>Capture screenshot of the bug</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.attachmentOption}
+                  onPress={() => {
+                    setShowAttachmentModal(false);
+                    selectImage();
+                  }}
+                >
+                  <Icon name="image" size={32} color="#ff9500" />
+                  <Text style={styles.attachmentOptionText}>Choose from Gallery</Text>
+                  <Text style={styles.attachmentOptionSubtext}>Select existing images or files</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </Modal>
 
       </SafeAreaView>
@@ -473,6 +756,100 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  optional: {
+    color: '#888888',
+    fontSize: 12,
+    fontWeight: '400',
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#888888',
+    marginTop: 6,
+    lineHeight: 16,
+  },
+  attachmentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#111111',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#333333',
+    borderStyle: 'dashed',
+  },
+  attachmentButtonText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#cccccc',
+    marginLeft: 12,
+  },
+  attachmentsList: {
+    marginTop: 12,
+    gap: 8,
+  },
+  attachmentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111111',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  attachmentName: {
+    flex: 1,
+    fontSize: 12,
+    color: '#cccccc',
+  },
+  attachmentModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'flex-end',
+  },
+  attachmentModalContent: {
+    backgroundColor: '#111111',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+  },
+  attachmentModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222222',
+  },
+  attachmentModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  attachmentOptions: {
+    padding: 20,
+    gap: 16,
+  },
+  attachmentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    gap: 16,
+  },
+  attachmentOptionText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  attachmentOptionSubtext: {
+    fontSize: 12,
+    color: '#888888',
+    marginTop: 2,
   },
 });
 

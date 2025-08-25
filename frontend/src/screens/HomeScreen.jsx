@@ -183,22 +183,32 @@ const HomeScreen = ({ navigation, route }) => {
   // Event handlers
   const handleStatCardPress = (stat) => {
     console.log('Stat card pressed:', stat.title);
-    // Navigate to detailed view
+    // Navigate to relevant screens based on stat type
+    if (stat.title === 'Active Bugs' || stat.title === 'Open Issues') {
+      navigation.navigate('Bugs');
+    } else if (stat.title === 'Projects') {
+      navigation.navigate('Projects');
+    } else if (stat.title === 'Points') {
+      navigation.navigate('Points');
+    }
   };
 
   const handleProjectPress = (project) => {
     console.log('Project pressed:', project.name);
-    // Navigate to project details
+    // Navigate to project bugs or details
+    navigation.navigate('Bugs');
   };
 
   const handleBugPress = (bug) => {
     console.log('Bug pressed:', bug.title);
     // Navigate to bug details
+    navigation.navigate('BugDetail', { bugId: bug.id });
   };
 
   const handleContributionPress = (contribution) => {
     console.log('Contribution pressed:', contribution.title);
-    // Navigate to contribution details
+    // Navigate to bug details or projects
+    navigation.navigate('Bugs');
   };
 
   const handleSearch = (text) => {
@@ -393,6 +403,14 @@ const HomeScreen = ({ navigation, route }) => {
               
               <View style={styles.profileSection}>
                 <TouchableOpacity 
+                  style={styles.pointsButton}
+                  onPress={() => navigation.navigate('Points')}
+                >
+                  <Icon name="emoji-events" size={20} color="#ff9500" />
+                  <Text style={styles.pointsButtonText}>1280</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
                   style={styles.profileIconContainer}
                   onPress={toggleProfileDropdown}
                 >
@@ -542,6 +560,9 @@ const HomeScreen = ({ navigation, route }) => {
                 <View style={[styles.trendingColumn, isTablet && styles.trendingColumnTablet]}>
                   <View style={styles.columnHeader}>
                     <Text style={styles.columnTitle}>🚨 Open Bugs</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('Bugs')}>
+                      <Text style={styles.seeAllText}>View All</Text>
+                    </TouchableOpacity>
                   </View>
                   <FlatList
                     data={openBugs}
@@ -693,6 +714,24 @@ const styles = StyleSheet.create({
   profileSection: {
     position: 'relative',
     alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  pointsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111111',
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#333333',
+    gap: 6,
+  },
+  pointsButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ff9500',
   },
   profileIconContainer: {
     position: 'relative',
@@ -908,6 +947,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   columnHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
   columnTitle: {

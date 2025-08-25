@@ -11,9 +11,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import LoginScreen from './src/screens/LoginScreen';
 import GetStartedScreen from './src/screens/GetStartedScreen';
 import HomeScreen from './src/screens/HomeScreen';
-import DashboardScreen from './src/screens/DashboardScreen';
 import ProjectsScreen from './src/screens/ProjectsScreen';
 import CreateProjectTab from './src/screens/CreateProjectTab';
+import BugsScreen from './src/screens/BugsScreen';
+import BugDetailScreen from './src/screens/BugDetailScreen';
+import PointsScreen from './src/screens/PointsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -175,7 +177,7 @@ const TabNavigator = ({ route }) => {
       />
       <Tab.Screen 
         name="Bugs" 
-        component={DashboardScreen}
+        component={BugsScreen}
         options={{
           tabBarBadge: 3, // Example: 3 new bugs
           tabBarBadgeStyle: {
@@ -265,6 +267,8 @@ const App = () => {
                 initialParams={{ user, isFirstTimeUser }}
               />
               <Stack.Screen name="MainApp" component={TabNavigator} />
+              <Stack.Screen name="BugDetail" component={BugDetailScreen} />
+              <Stack.Screen name="Points" component={PointsScreen} />
             </>
           ) : (
             <Stack.Screen name="Login" component={LoginScreen} />
