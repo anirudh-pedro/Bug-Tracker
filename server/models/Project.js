@@ -120,8 +120,7 @@ const projectSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for better performance
-projectSchema.index({ key: 1 });
+// Indexes for better performance (key already has unique index, so skip manual index)
 projectSchema.index({ status: 1 });
 projectSchema.index({ owner: 1 });
 projectSchema.index({ 'members.user': 1 });

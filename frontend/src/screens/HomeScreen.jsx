@@ -30,6 +30,46 @@ const HomeScreen = ({ navigation, route }) => {
   const [projectName, setProjectName] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [userProfile, setUserProfile] = useState({
+    username: '',
+    industry: '',
+    displayName: user?.displayName || 'User'
+  });
+
+  // Load user profile data
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        if (user?.uid) {
+          const userData = await AsyncStorage.getItem(`user_data_${user.uid}`);
+          if (userData) {
+            const parsedData = JSON.parse(userData);
+            setUserProfile(prev => ({
+              ...prev,
+              username: parsedData.username || '',
+              industry: parsedData.industry || '',
+              displayName: parsedData.username || parsedData.name || user?.displayName || 'User'
+            }));
+          } else {
+            // Fallback to Firebase user data if no AsyncStorage data
+            setUserProfile(prev => ({
+              ...prev,
+              displayName: user?.displayName || user?.email?.split('@')[0] || 'User'
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+        // Fallback to Firebase user data
+        setUserProfile(prev => ({
+          ...prev,
+          displayName: user?.displayName || user?.email?.split('@')[0] || 'User'
+        }));
+      }
+    };
+
+    loadUserProfile();
+  }, [user?.uid]);
 
   // Sample data for stats
   const statsData = [
@@ -344,7 +384,7 @@ const HomeScreen = ({ navigation, route }) => {
   const handleProfileSettings = () => {
     console.log('Profile Settings clicked');
     setShowProfileDropdown(false);
-    Alert.alert('Profile Settings', 'Profile settings will be implemented soon!');
+    navigation.navigate('ProfileSettings');
   };
 
   const handleAppSettings = () => {
@@ -419,7 +459,8 @@ const HomeScreen = ({ navigation, route }) => {
                   ) : (
                     <View style={styles.topDefaultAvatar}>
                       <Text style={styles.topAvatarText}>
-                        {user.displayName ? user.displayName.charAt(0).toUpperCase() : '?'}
+                        {userProfile.username ? userProfile.username.charAt(0).toUpperCase() : 
+                         userProfile.displayName ? userProfile.displayName.charAt(0).toUpperCase() : '?'}
                       </Text>
                     </View>
                   )}
@@ -439,11 +480,16 @@ const HomeScreen = ({ navigation, route }) => {
                     <View style={styles.dropdownContent}>
                       <View style={styles.dropdownHeader}>
                         <Text style={styles.dropdownUserName}>
-                          {user.displayName || 'User'}
+                          {userProfile.username || userProfile.displayName || 'User'}
                         </Text>
                         <Text style={styles.dropdownUserEmail}>
                           {user.email || 'No email'}
                         </Text>
+                        {userProfile.industry && (
+                          <Text style={styles.dropdownUserIndustry}>
+                            {userProfile.industry}
+                          </Text>
+                        )}
                       </View>
                       
                       <TouchableOpacity 
@@ -496,7 +542,7 @@ const HomeScreen = ({ navigation, route }) => {
               <View style={styles.welcomeContent}>
                 <View style={styles.userGreeting}>
                   <Text style={styles.welcomeText}>
-                    Welcome back, {user.displayName || 'Developer'}!
+                    Welcome back, {userProfile.username || userProfile.displayName || 'Developer'}!
                   </Text>
                   <Text style={styles.dateText}>
                     Ready to squash some bugs today?
@@ -813,6 +859,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#666666',
     fontWeight: '400',
+  },
+  dropdownUserIndustry: {
+    fontSize: 10,
+    color: '#ff9500',
+    fontWeight: '500',
+    marginTop: 2,
   },
   dropdownItem: {
     flexDirection: 'row',

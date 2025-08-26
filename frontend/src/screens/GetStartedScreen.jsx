@@ -14,21 +14,63 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const GetStartedScreen = ({ navigation, route }) => {
+  const [username, setUsername] = useState('');
   const [industry, setIndustry] = useState('Select');
   const [contactNumber, setContactNumber] = useState('');
   const [showIndustryDropdown, setShowIndustryDropdown] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
 
   const user = route?.params?.user || {};
+  const [token, setToken] = useState(route?.params?.token || '');
+
+  // Load token from AsyncStorage if not available in params
+  useEffect(() => {
+    const loadToken = async () => {
+      try {
+        if (!token) {
+          console.log('🔍 No token in params, checking AsyncStorage...');
+          const storedToken = await AsyncStorage.getItem('userToken');
+          if (storedToken) {
+            console.log('✅ Token found in AsyncStorage');
+            setToken(storedToken);
+          } else {
+            console.log('❌ No token found in AsyncStorage either');
+          }
+        } else {
+          console.log('✅ Token available from params:', token.substring(0, 20) + '...');
+        }
+      } catch (error) {
+        console.error('❌ Error loading token:', error);
+      }
+    };
+    
+    loadToken();
+  }, [token]);
 
   // Check if user has already completed onboarding
   useEffect(() => {
     const checkOnboardingStatus = async () => {
       try {
+        // Check if user already has username and completed onboarding
+        if (user.username && user.onboardingCompleted) {
+          console.log('🔄 User already completed onboarding, redirecting to Home');
+          navigation.replace('Home');
+          return;
+        }
+
+        // Also check AsyncStorage as backup
         const hasCompletedOnboarding = await AsyncStorage.getItem(`user_onboarding_${user.uid}`);
+        const userData = await AsyncStorage.getItem(`user_data_${user.uid}`);
         
-        if (hasCompletedOnboarding) {
-          // User has already completed onboarding, navigate directly to MainApp
-          navigation.replace('MainApp');
+        if (hasCompletedOnboarding && userData) {
+          const parsedUserData = JSON.parse(userData);
+          if (parsedUserData.username) {
+            console.log('🔄 User found in AsyncStorage with username, redirecting to Home');
+            navigation.replace('Home');
+            return;
+          }
         }
       } catch (error) {
         console.error('Error checking onboarding status:', error);
@@ -36,10 +78,10 @@ const GetStartedScreen = ({ navigation, route }) => {
       }
     };
 
-    if (user.uid) {
+    if (user.uid || user.id) {
       checkOnboardingStatus();
     }
-  }, [user.uid, navigation]);
+  }, [user, navigation]);
 
   const industries = [
     'Technology',
@@ -56,13 +98,101 @@ const GetStartedScreen = ({ navigation, route }) => {
     'Other'
   ];
 
+  // Username validation function
+  const validateUsername = (text) => {
+    if (!text) {
+      setUsernameError('');
+      setUsernameAvailable(null);
+      return;
+    }
+    
+    if (text.length < 3) {
+      setUsernameError('Username must be at least 3 characters');
+      setUsernameAvailable(false);
+      return;
+    }
+    
+    if (text.length > 30) {
+      setUsernameError('Username cannot exceed 30 characters');
+      setUsernameAvailable(false);
+      return;
+    }
+    
+    if (!/^[a-zA-Z0-9_]+$/.test(text)) {
+      setUsernameError('Username can only contain letters, numbers, and underscores');
+      setUsernameAvailable(false);
+      return;
+    }
+    
+    setUsernameError('');
+    // Check availability with backend
+    checkUsernameAvailability(text);
+  };
+
+  const checkUsernameAvailability = async (username) => {
+    if (!token) {
+      console.log('No token available for username check');
+      return;
+    }
+    
+    setCheckingUsername(true);
+    try {
+      const response = await fetch(`http://10.0.2.2:5000/api/users/check-username/${username}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      setUsernameAvailable(data.available);
+      if (!data.available) {
+        setUsernameError('Username is already taken');
+      }
+    } catch (error) {
+      console.error('Username check error:', error);
+      setUsernameAvailable(null);
+    } finally {
+      setCheckingUsername(false);
+    }
+  };
+
+  const handleUsernameChange = (text) => {
+    setUsername(text);
+    
+    // Debounce username validation
+    clearTimeout(window.usernameValidationTimeout);
+    window.usernameValidationTimeout = setTimeout(() => {
+      validateUsername(text);
+    }, 500);
+  };
+
   const handleGetStarted = async () => {
+    console.log('🔥 Get Started button pressed');
+    console.log('📋 Current form data:', { username, industry, contactNumber });
+    console.log('🔍 Username available:', usernameAvailable);
+    console.log('❌ Username error:', usernameError);
+    console.log('🎫 Token available:', !!token);
+    console.log('🎫 Token preview:', token ? token.substring(0, 30) + '...' : 'NO TOKEN');
+
+    // TEMPORARY: Skip username validation for testing
+    console.log('⚠️ TEMPORARY: Skipping username validation for testing');
+    
+    if (!username.trim()) {
+      console.log('❌ Username validation failed: empty');
+      Alert.alert('Required Field', 'Please enter a username');
+      return;
+    }
+    
     if (industry === 'Select') {
+      console.log('❌ Industry not selected');
       Alert.alert('Required Field', 'Please select your industry');
       return;
     }
     
     if (!contactNumber.trim()) {
+      console.log('❌ Contact number validation failed: empty');
       Alert.alert('Required Field', 'Please enter your contact number');
       return;
     }
@@ -70,64 +200,122 @@ const GetStartedScreen = ({ navigation, route }) => {
     // Validate phone number - must be exactly 10 digits
     const phoneRegex = /^\d{10}$/;
     if (!phoneRegex.test(contactNumber.trim())) {
+      console.log('❌ Phone number validation failed:', contactNumber);
       Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit phone number');
       return;
     }
 
+    if (!token) {
+      console.log('❌ No token available for API call');
+      console.log('📋 User object:', user);
+      console.log('📋 Route params:', route?.params);
+      
+      // Try to get token from AsyncStorage one more time
+      try {
+        const storedToken = await AsyncStorage.getItem('userToken');
+        if (storedToken) {
+          console.log('🔄 Found token in AsyncStorage, retrying...');
+          setToken(storedToken);
+          // Retry the function with the token
+          return;
+        }
+      } catch (error) {
+        console.error('❌ Error checking AsyncStorage for token:', error);
+      }
+      
+      Alert.alert('Authentication Error', 'Please try signing in again.');
+      return;
+    }
+
     try {
-      // For now, we'll skip the API call and just save locally
-      // In production, you would make the API call here
-      /*
-      const response = await fetch('http://192.168.212.115:5000/api/users/complete-onboarding', {
+      console.log('🚀 Submitting onboarding data:', {
+        username: username.trim(),
+        industry,
+        phoneNumber: contactNumber.trim()
+      });
+
+      console.log('🔍 Testing authentication first...');
+      
+      // First test if authentication works
+      const authTestResponse = await fetch('http://10.0.2.2:5000/api/users/test-auth', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('🔍 Auth test response status:', authTestResponse.status);
+      const authTestData = await authTestResponse.json();
+      console.log('🔍 Auth test response:', authTestData);
+
+      if (!authTestResponse.ok) {
+        console.error('❌ Authentication test failed');
+        Alert.alert('Authentication Error', 'Your session has expired. Please sign in again.');
+        
+        // Navigate back to login
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Login' }]
+        });
+        return;
+      }
+
+      console.log('✅ Authentication test passed, proceeding with onboarding...');
+
+      // Submit to backend
+      const response = await fetch('http://10.0.2.2:5000/api/users/complete-onboarding', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.accessToken}` // Assuming we have access token
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          username: username.trim(),
           phoneNumber: contactNumber.trim(),
           industry: industry
         }),
       });
 
+      console.log('📡 Response status:', response.status);
       const data = await response.json();
+      console.log('📡 Onboarding response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || 'Failed to save user data');
       }
 
-      console.log('User onboarding completed:', data);
-      */
+      console.log('✅ User onboarding completed:', data);
 
-      // Save user data locally for now
+      // Save user data locally as well
       const userData = {
-        uid: user.uid,
+        uid: user.uid || user.id,
+        username: username.trim(),
         phoneNumber: contactNumber.trim(),
         industry: industry,
         completedAt: new Date().toISOString()
       };
       
-      await AsyncStorage.setItem(`user_data_${user.uid}`, JSON.stringify(userData));
+      await AsyncStorage.setItem(`user_data_${user.uid || user.id}`, JSON.stringify(userData));
+      await AsyncStorage.setItem(`user_onboarding_${user.uid || user.id}`, 'completed');
 
-      // Mark onboarding as complete in AsyncStorage
-      await AsyncStorage.setItem(`user_onboarding_${user.uid}`, 'completed');
+      console.log('✅ Data saved locally');
 
-      console.log('User onboarding completed locally:', userData);
-
-      // Navigate to main app with flag to show project creation modal
+      // Navigate to main app
+      console.log('🚀 Navigating to MainApp');
       navigation.reset({
         index: 0,
         routes: [{ 
           name: 'MainApp', 
           params: { 
             showCreateProject: true,
-            userInfo: { industry, contactNumber, ...user }
+            userInfo: { username: username.trim(), industry, contactNumber, ...user }
           }
         }],
       });
     } catch (error) {
-      console.error('Error completing onboarding:', error);
-      Alert.alert('Error', 'Failed to save your information. Please try again.');
+      console.error('❌ Error completing onboarding:', error);
+      Alert.alert('Error', error.message || 'Failed to save your information. Please try again.');
     }
   };
 
@@ -176,6 +364,54 @@ const GetStartedScreen = ({ navigation, route }) => {
 
         {/* Form Section */}
         <View style={styles.formContainer}>
+          {/* Username Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>
+              Username <Text style={styles.required}>*</Text>
+            </Text>
+            <View style={styles.inputWithIcon}>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  usernameError ? styles.invalidInput : 
+                  usernameAvailable === true ? styles.validInput : null
+                ]}
+                placeholder="Enter your username"
+                placeholderTextColor="#888888"
+                value={username}
+                onChangeText={handleUsernameChange}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={30}
+              />
+              {checkingUsername && (
+                <View style={styles.inputIcon}>
+                  <Icon name="hourglass-empty" size={20} color="#ffa500" />
+                </View>
+              )}
+              {!checkingUsername && usernameAvailable === true && (
+                <View style={styles.inputIcon}>
+                  <Icon name="check-circle" size={20} color="#4CAF50" />
+                </View>
+              )}
+              {!checkingUsername && (usernameAvailable === false || usernameError) && (
+                <View style={styles.inputIcon}>
+                  <Icon name="error" size={20} color="#F44336" />
+                </View>
+              )}
+            </View>
+            
+            {usernameError && (
+              <Text style={styles.validationError}>{usernameError}</Text>
+            )}
+            {!usernameError && usernameAvailable === true && (
+              <Text style={styles.validationSuccess}>✓ Username is available!</Text>
+            )}
+            <Text style={styles.helperText}>
+              3-30 characters, letters, numbers, and underscores only
+            </Text>
+          </View>
+
           {/* Industry Dropdown */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Industry</Text>
@@ -249,7 +485,11 @@ const GetStartedScreen = ({ navigation, route }) => {
           {/* Get Started Button */}
           <TouchableOpacity 
             style={styles.getStartedButton}
-            onPress={handleGetStarted}
+            onPress={() => {
+              console.log('🚨 BUTTON PRESSED - onPress triggered');
+              handleGetStarted();
+            }}
+            activeOpacity={0.7}
           >
             <Text style={styles.getStartedText}>Get Started</Text>
           </TouchableOpacity>
@@ -459,6 +699,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ffffff',
     minHeight: 50,
+    flex: 1,
+  },
+  inputWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#333333',
+    borderRadius: 8,
+    paddingRight: 15,
+  },
+  inputIcon: {
+    paddingLeft: 10,
+  },
+  validInput: {
+    borderColor: '#4CAF50',
+    borderWidth: 1,
+  },
+  invalidInput: {
+    borderColor: '#ff6b6b',
+    borderWidth: 2,
+  },
+  helperText: {
+    color: '#888888',
+    fontSize: 11,
+    marginTop: 5,
+    marginLeft: 5,
   },
   invalidInput: {
     borderColor: '#ff6b6b',

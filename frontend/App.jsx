@@ -10,12 +10,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import LoginScreen from './src/screens/LoginScreen';
 import GetStartedScreen from './src/screens/GetStartedScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProjectsScreen from './src/screens/ProjectsScreen';
 import CreateProjectTab from './src/screens/CreateProjectTab';
 import BugsScreen from './src/screens/BugsScreen';
 import BugDetailScreen from './src/screens/BugDetailScreen';
 import PointsScreen from './src/screens/PointsScreen';
+import ProfileSettingsScreen from './src/screens/ProfileSettingsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -215,6 +217,25 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
   const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
+  const [forceLoginForDev, setForceLoginForDev] = useState(true); // Force login for development
+
+  // Clear authentication on app start for development
+  useEffect(() => {
+    const clearAuthForDevelopment = async () => {
+      try {
+        console.log('🔧 Development Mode: Clearing authentication...');
+        await auth().signOut();
+        setUser(null);
+        setForceLoginForDev(true);
+      } catch (error) {
+        console.log('No user to sign out or error:', error.message);
+      } finally {
+        setInitializing(false);
+      }
+    };
+
+    clearAuthForDevelopment();
+  }, []);
 
   // Check if user has completed onboarding
   const checkUserOnboardingStatus = async (user) => {
@@ -237,10 +258,19 @@ const App = () => {
   function onAuthStateChanged(user) {
     console.log('Auth state changed:', user ? 'User logged in' : 'User logged out');
     console.log('User details:', user);
+    
+    // In development mode, ignore auth state changes initially
+    if (forceLoginForDev && !user) {
+      setUser(null);
+      if (initializing) setInitializing(false);
+      return;
+    }
+    
     setUser(user);
     
     if (user) {
       checkUserOnboardingStatus(user);
+      setForceLoginForDev(false); // User successfully logged in
     } else {
       setIsFirstTimeUser(false);
     }
@@ -251,7 +281,7 @@ const App = () => {
   useEffect(() => {
     const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
     return subscriber; // unsubscribe on unmount
-  }, [initializing]);
+  }, [initializing, forceLoginForDev]);
 
   if (initializing) return null; // Loading screen can be added here
 
@@ -259,7 +289,7 @@ const App = () => {
     <SafeAreaProvider>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{headerShown: false}}>
-          {user ? (
+          {user && !forceLoginForDev ? (
             <>
               <Stack.Screen 
                 name="GetStarted" 
@@ -267,11 +297,18 @@ const App = () => {
                 initialParams={{ user, isFirstTimeUser }}
               />
               <Stack.Screen name="MainApp" component={TabNavigator} />
+              <Stack.Screen name="Home" component={TabNavigator} />
+              <Stack.Screen name="Onboarding" component={OnboardingScreen} />
               <Stack.Screen name="BugDetail" component={BugDetailScreen} />
               <Stack.Screen name="Points" component={PointsScreen} />
+              <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />
             </>
           ) : (
-            <Stack.Screen name="Login" component={LoginScreen} />
+            <>
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="GetStarted" component={GetStartedScreen} />
+              <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+            </>
           )}
         </Stack.Navigator>
       </NavigationContainer>

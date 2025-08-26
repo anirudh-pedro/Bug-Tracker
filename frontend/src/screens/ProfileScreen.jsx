@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,9 +13,42 @@ import auth from '@react-native-firebase/auth';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ProfileScreen = () => {
   const user = auth().currentUser;
+  const [userProfile, setUserProfile] = useState({
+    username: '',
+    name: '',
+    industry: '',
+    phoneNumber: '',
+    role: ''
+  });
+
+  // Load user profile data from AsyncStorage
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        if (user?.uid) {
+          const userData = await AsyncStorage.getItem(`user_data_${user.uid}`);
+          if (userData) {
+            const parsedData = JSON.parse(userData);
+            setUserProfile({
+              username: parsedData.username || '',
+              name: parsedData.name || user.displayName || '',
+              industry: parsedData.industry || '',
+              phoneNumber: parsedData.phoneNumber || '',
+              role: parsedData.role || 'developer'
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+      }
+    };
+
+    loadUserProfile();
+  }, [user]);
 
   const signOut = async () => {
     try {
@@ -74,7 +107,9 @@ const ProfileScreen = () => {
               ) : (
                 <View style={styles.defaultAvatar}>
                   <Text style={styles.avatarText}>
-                    {user.displayName ? user.displayName.charAt(0).toUpperCase() : '?'}
+                    {userProfile.username ? userProfile.username.charAt(0).toUpperCase() : 
+                     userProfile.name ? userProfile.name.charAt(0).toUpperCase() : 
+                     user.displayName ? user.displayName.charAt(0).toUpperCase() : '?'}
                   </Text>
                 </View>
               )}
@@ -82,11 +117,25 @@ const ProfileScreen = () => {
             </View>
 
             <Text style={styles.userName}>
-              {user.displayName || 'No name available'}
+              {userProfile.username || userProfile.name || user.displayName || 'No name available'}
             </Text>
             <Text style={styles.userEmail}>
               {user.email || 'No email available'}
             </Text>
+
+            {userProfile.industry && (
+              <Text style={styles.userIndustry}>
+                {userProfile.industry}
+              </Text>
+            )}
+
+            {userProfile.role && (
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleText}>
+                  {userProfile.role.charAt(0).toUpperCase() + userProfile.role.slice(1)}
+                </Text>
+              </View>
+            )}
 
             <View style={styles.verificationBadge}>
               <Icon 
@@ -236,8 +285,29 @@ const styles = StyleSheet.create({
   userEmail: {
     fontSize: 16,
     color: '#a0a0a0',
-    marginBottom: 16,
+    marginBottom: 8,
     textAlign: 'center',
+  },
+  userIndustry: {
+    fontSize: 14,
+    color: '#10b981',
+    fontWeight: '500',
+    marginBottom: 8,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  roleBadge: {
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 8,
+    alignSelf: 'center',
+  },
+  roleText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   verificationBadge: {
     flexDirection: 'row',

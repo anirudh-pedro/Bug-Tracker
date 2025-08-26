@@ -15,7 +15,11 @@ const authenticate = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
+    console.log('🔍 Authentication middleware called');
+    console.log('🎫 Token received:', token ? token.substring(0, 30) + '...' : 'NO TOKEN');
+    
     if (!token) {
+      console.log('❌ No token provided');
       return res.status(401).json({
         success: false,
         message: 'Access denied. No token provided.'
@@ -24,6 +28,7 @@ const authenticate = async (req, res, next) => {
 
     // Development mode: Allow mock tokens
     if (token === 'mock-jwt-token-for-development') {
+      console.log('🧪 Using mock token for development');
       req.user = {
         _id: 'mock-user-id',
         id: 'mock-user-id',
@@ -35,10 +40,15 @@ const authenticate = async (req, res, next) => {
       return next();
     }
 
+    console.log('🔍 Verifying JWT token...');
     const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('✅ JWT decoded successfully:', { userId: decoded.userId });
+    
     const user = await User.findById(decoded.userId).select('-googleId -__v');
+    console.log('🔍 User lookup result:', user ? { id: user._id, email: user.email } : 'USER NOT FOUND');
     
     if (!user) {
+      console.log('❌ Invalid token: User not found in database');
       return res.status(401).json({
         success: false,
         message: 'Invalid token. User not found.'
@@ -46,28 +56,34 @@ const authenticate = async (req, res, next) => {
     }
 
     if (!user.isActive) {
+      console.log('❌ User account is deactivated');
       return res.status(401).json({
         success: false,
         message: 'Account is deactivated.'
       });
     }
 
+    console.log('✅ Authentication successful for user:', user.email);
     req.user = user;
     next();
   } catch (error) {
+    console.error('❌ Authentication middleware error:', error);
+    
     if (error.name === 'JsonWebTokenError') {
+      console.log('❌ JWT Error: Invalid token format');
       return res.status(401).json({
         success: false,
         message: 'Invalid token.'
       });
     } else if (error.name === 'TokenExpiredError') {
+      console.log('❌ JWT Error: Token expired');
       return res.status(401).json({
         success: false,
         message: 'Token expired.'
       });
     }
     
-    console.error('Authentication error:', error);
+    console.error('❌ Unexpected authentication error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error during authentication.'

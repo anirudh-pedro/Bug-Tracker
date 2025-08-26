@@ -24,10 +24,19 @@ const bugSchema = new mongoose.Schema({
     ref: 'Project',
     required: true
   },
-  reporter: {
+  reportedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  assignedTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  // Legacy field mapping for backward compatibility
+  reporter: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
   assignee: {
     type: mongoose.Schema.Types.ObjectId,
@@ -180,14 +189,15 @@ const bugSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for better performance
+// Indexes for better performance (bugId already has unique index, so skip manual index)
 bugSchema.index({ project: 1 });
 bugSchema.index({ reporter: 1 });
 bugSchema.index({ assignee: 1 });
+bugSchema.index({ reportedBy: 1 });
+bugSchema.index({ assignedTo: 1 });
 bugSchema.index({ status: 1 });
 bugSchema.index({ priority: 1 });
 bugSchema.index({ createdAt: -1 });
-bugSchema.index({ bugId: 1 });
 bugSchema.index({ 'project': 1, 'status': 1 });
 
 // Generate bug ID before saving

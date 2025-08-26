@@ -11,6 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -19,11 +20,13 @@ import AntDesign from 'react-native-vector-icons/AntDesign';
 // Configure Google Sign-In
 GoogleSignin.configure({
   webClientId: '505775401765-43mt53j5jri7f6pqtlq37b99s0ui216d.apps.googleusercontent.com',
+  forceCodeForRefreshToken: true, // Force refresh token
+  accountName: '', // Force account picker
 });
 
 const {width, height} = Dimensions.get('window');
 
-const LoginScreen = () => {
+const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const scrollViewRef = useRef(null);
@@ -104,10 +107,17 @@ const LoginScreen = () => {
     try {
       setLoading(true);
 
+      // Clear any existing Google Sign-In session to force account picker
+      try {
+        await GoogleSignin.signOut();
+      } catch (signOutError) {
+        console.log('No existing session to sign out from:', signOutError.message);
+      }
+
       // Check if your device supports Google Play
       await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
 
-      // Get the users ID token
+      // Get the users ID token - this will now show account picker
       const signInResult = await GoogleSignin.signIn();
       const idToken = signInResult.data?.idToken;
 
@@ -115,16 +125,93 @@ const LoginScreen = () => {
         throw new Error('Failed to get ID token from Google Sign-In');
       }
 
+      console.log('✅ Google Sign-In successful, got ID token');
+
       // Create a Google credential with the token
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
 
       // Sign-in the user with the credential
       const userCredential = await auth().signInWithCredential(googleCredential);
       
-      console.log('User signed in:', userCredential.user.displayName);
+      console.log('✅ Firebase auth successful:', userCredential.user.displayName);
+
+      // Send ID token to backend for authentication
+      console.log('📡 Sending request to backend...');
+      const response = await fetch('http://10.0.2.2:5000/api/auth/google', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ idToken }),
+      });
+
+      console.log('📡 Backend response status:', response.status);
+      const data = await response.json();
+      console.log('📡 Backend response data:', data);
+
+      if (data.success) {
+        console.log('✅ Backend authentication successful');
+        console.log('🔍 User needs onboarding:', data.requiresOnboarding);
+        console.log('🔍 Is new user:', data.isNewUser);
+        
+        // Store token in AsyncStorage for future use
+        if (data.token) {
+          await AsyncStorage.setItem('userToken', data.token);
+          console.log('💾 Token stored in AsyncStorage');
+        }
+
+        // Store user data in AsyncStorage with both Firebase UID and backend user ID
+        if (data.user) {
+          const userData = {
+            uid: userCredential.user.uid, // Firebase UID
+            id: data.user.id, // Backend user ID
+            username: data.user.username,
+            name: data.user.name,
+            email: data.user.email,
+            avatar: data.user.avatar,
+            industry: data.user.industry,
+            phoneNumber: data.user.phoneNumber,
+            role: data.user.role,
+            onboardingCompleted: data.user.onboardingCompleted
+          };
+          
+          await AsyncStorage.setItem(`user_data_${userCredential.user.uid}`, JSON.stringify(userData));
+          console.log('💾 User data stored in AsyncStorage');
+        }
+        
+        // Check if user needs onboarding
+        // Skip onboarding if user has completed it AND has a username
+        const needsOnboarding = data.requiresOnboarding || data.isNewUser || !data.user.username || !data.user.onboardingCompleted;
+        
+        if (needsOnboarding) {
+          console.log('🚀 Navigating to GetStarted screen - User needs onboarding');
+          console.log('📊 Onboarding check:', {
+            requiresOnboarding: data.requiresOnboarding,
+            isNewUser: data.isNewUser,
+            hasUsername: !!data.user.username,
+            onboardingCompleted: data.user.onboardingCompleted
+          });
+          navigation.replace('GetStarted', {
+            user: { ...data.user, uid: userCredential.user.uid },
+            token: data.token
+          });
+        } else {
+          console.log('🚀 Navigating to Home screen - User has completed onboarding');
+          console.log('📊 User profile:', {
+            username: data.user.username,
+            onboardingCompleted: data.user.onboardingCompleted,
+            hasIndustry: !!data.user.industry
+          });
+          // Navigate to main app
+          navigation.replace('Home');
+        }
+      } else {
+        console.error('❌ Backend authentication failed:', data.message);
+        Alert.alert('Authentication Error', data.message || 'Failed to authenticate with server');
+      }
       
     } catch (error) {
-      console.error('Google Sign-In Error:', error);
+      console.error('❌ Google Sign-In Error:', error);
       
       if (error.code === 'auth/account-exists-with-different-credential') {
         Alert.alert(
@@ -133,11 +220,27 @@ const LoginScreen = () => {
         );
       } else if (error.code === 'auth/invalid-credential') {
         Alert.alert('Error', 'Invalid credentials. Please try again.');
+      } else if (error.code === '12501') {
+        // User cancelled the sign-in process
+        console.log('User cancelled Google Sign-In');
       } else {
         Alert.alert('Sign-In Error', error.message || 'An error occurred during sign-in');
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Development function to clear all authentication data
+  const clearAuthForDevelopment = async () => {
+    try {
+      await auth().signOut();
+      await GoogleSignin.signOut();
+      await AsyncStorage.clear();
+      Alert.alert('Development Reset', 'All authentication data cleared!');
+    } catch (error) {
+      console.log('Clear auth error:', error);
+      Alert.alert('Development Reset', 'Authentication data cleared (with some errors)');
     }
   };
 
@@ -1228,6 +1331,15 @@ const LoginScreen = () => {
                 </>
               )}
             </TouchableOpacity>
+            
+            {/* Development Reset Button */}
+            <TouchableOpacity 
+              style={styles.devResetButton}
+              onPress={clearAuthForDevelopment}
+            >
+              <Icon name="refresh" size={16} color="#ff6b6b" />
+              <Text style={styles.devResetText}>Dev: Clear Auth</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </SafeAreaView>
@@ -1908,6 +2020,25 @@ const styles = StyleSheet.create({
   googleButtonText: {
     color: '#ffffff',
     fontSize: 16,
+    fontWeight: '500',
+  },
+  devResetButton: {
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ff6b6b',
+    gap: 8,
+    marginTop: 10,
+    opacity: 0.8,
+  },
+  devResetText: {
+    color: '#ff6b6b',
+    fontSize: 12,
     fontWeight: '500',
   },
 });

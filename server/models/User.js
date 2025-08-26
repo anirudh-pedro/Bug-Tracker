@@ -7,6 +7,15 @@ const userSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Name cannot exceed 100 characters']
   },
+  username: {
+    type: String,
+    unique: true,
+    sparse: true, // Allow null values but ensure uniqueness when provided
+    trim: true,
+    minlength: [3, 'Username must be at least 3 characters'],
+    maxlength: [30, 'Username cannot exceed 30 characters'],
+    match: [/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores']
+  },
   email: {
     type: String,
     required: [true, 'Email is required'],
@@ -40,7 +49,7 @@ const userSchema = new mongoose.Schema({
   industry: {
     type: String,
     enum: {
-      values: ['Technology', 'Healthcare', 'Finance', 'Education', 'Manufacturing', 'Retail', 'Consulting', 'Real Estate', 'Media & Entertainment', 'Non-Profit', 'Government', 'Other'],
+      values: ['', 'Technology', 'Healthcare', 'Finance', 'Education', 'Manufacturing', 'Retail', 'Consulting', 'Real Estate', 'Media & Entertainment', 'Non-Profit', 'Government', 'Other'],
       message: 'Invalid industry selection'
     },
     default: ''
@@ -120,11 +129,10 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-// Index for better query performance
-userSchema.index({ email: 1 });
-userSchema.index({ googleId: 1 });
+// Index for better query performance (only add indexes that aren't already created by unique: true)
 userSchema.index({ role: 1 });
 userSchema.index({ isActive: 1 });
+// Note: username index is automatically created by unique: true
 
 // Update lastLogin on authentication
 userSchema.methods.updateLastLogin = function() {
