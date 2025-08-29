@@ -71,9 +71,18 @@ const googleAuth = async (req, res) => {
     const token = generateToken(user._id);
     console.log('🎫 JWT token generated for user:', user._id);
 
-    // Check if user needs onboarding
-    const requiresOnboarding = !user.onboardingCompleted || !user.username;
-    console.log('� Requires onboarding:', requiresOnboarding);
+    // Check if user needs onboarding - must have both username and onboarding completed
+    const hasValidUsername = user.username && user.username.trim().length > 0;
+    const hasCompletedOnboarding = user.onboardingCompleted === true;
+    const requiresOnboarding = !hasValidUsername || !hasCompletedOnboarding;
+    
+    console.log('🎯 Onboarding check details:', {
+      hasValidUsername,
+      hasCompletedOnboarding,
+      requiresOnboarding,
+      username: user.username,
+      onboardingCompleted: user.onboardingCompleted
+    });
 
     const responseData = {
       success: true,
