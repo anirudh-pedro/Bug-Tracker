@@ -101,7 +101,7 @@ const OnboardingScreen = ({ route, navigation }) => {
 
     setCheckingUsername(true);
     try {
-      const response = await fetch(`http://10.0.2.2:5000/api/users/check-username/${username}`, {
+      const response = await fetch(`http://172.16.8.229:5000/api/users/check-username/${username}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -185,7 +185,7 @@ const OnboardingScreen = ({ route, navigation }) => {
     
     setLoading(true);
     try {
-      const response = await fetch('http://10.0.2.2:5000/api/users/complete-onboarding', {
+      const response = await fetch('http://172.16.8.229:5000/api/users/complete-onboarding', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

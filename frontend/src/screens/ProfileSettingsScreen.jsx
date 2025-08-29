@@ -113,7 +113,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
     setCheckingUsername(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch('http://10.0.2.2:5000/api/users/check-username', {
+      const response = await fetch('http://172.16.8.229:5000/api/users/check-username', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -163,7 +163,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch('http://10.0.2.2:5000/api/users/update-profile', {
+      const response = await fetch('http://172.16.8.229:5000/api/users/update-profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

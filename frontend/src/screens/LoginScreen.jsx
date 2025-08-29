@@ -137,7 +137,7 @@ const LoginScreen = ({ navigation }) => {
 
       // Send ID token to backend for authentication
       console.log('📡 Sending request to backend...');
-      const response = await fetch('http://10.0.2.2:5000/api/auth/google', {
+      const response = await fetch('http://172.16.8.229:5000/api/auth/google', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

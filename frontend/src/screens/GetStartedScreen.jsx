@@ -137,7 +137,7 @@ const GetStartedScreen = ({ navigation, route }) => {
     
     setCheckingUsername(true);
     try {
-      const response = await fetch(`http://10.0.2.2:5000/api/users/check-username/${username}`, {
+      const response = await fetch(`http://172.16.8.229:5000/api/users/check-username/${username}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -237,7 +237,7 @@ const GetStartedScreen = ({ navigation, route }) => {
       console.log('🔍 Testing authentication first...');
       
       // First test if authentication works
-      const authTestResponse = await fetch('http://10.0.2.2:5000/api/users/test-auth', {
+      const authTestResponse = await fetch('http://172.16.8.229:5000/api/users/test-auth', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -264,7 +264,7 @@ const GetStartedScreen = ({ navigation, route }) => {
       console.log('✅ Authentication test passed, proceeding with onboarding...');
 
       // Submit to backend
-      const response = await fetch('http://10.0.2.2:5000/api/users/complete-onboarding', {
+      const response = await fetch('http://172.16.8.229:5000/api/users/complete-onboarding', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
