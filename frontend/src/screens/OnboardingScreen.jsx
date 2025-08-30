@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
+import { API_CONFIG, buildApiUrl } from '../config/apiConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -101,7 +102,7 @@ const OnboardingScreen = ({ route, navigation }) => {
 
     setCheckingUsername(true);
     try {
-      const response = await fetch(`http://172.16.8.229:5000/api/users/check-username/${username}`, {
+      const response = await fetch(`${buildApiUrl(API_CONFIG.ENDPOINTS.USERS.CHECK_USERNAME)}/${username}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -185,7 +186,7 @@ const OnboardingScreen = ({ route, navigation }) => {
     
     setLoading(true);
     try {
-      const response = await fetch('http://172.16.8.229:5000/api/users/complete-onboarding', {
+      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.USERS.COMPLETE_ONBOARDING), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -14,6 +14,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
+import { API_CONFIG, buildApiUrl } from '../config/apiConfig';
 
 const ProfileSettingsScreen = ({ navigation }) => {
   const user = auth().currentUser;
@@ -50,14 +51,25 @@ const ProfileSettingsScreen = ({ navigation }) => {
           const userData = await AsyncStorage.getItem(`user_data_${user.uid}`);
           if (userData) {
             const parsedData = JSON.parse(userData);
-            setUsername(parsedData.username || '');
-            setOriginalUsername(parsedData.username || '');
+            
+            // Never use tempUsername if we have a real username
+            const displayUsername = parsedData.username || ''; // Don't use tempUsername
+            
+            setUsername(displayUsername);
+            setOriginalUsername(displayUsername);
             setName(parsedData.name || user.displayName || '');
             setPhoneNumber(parsedData.phoneNumber || '');
             setIndustry(parsedData.industry || '');
+            
+            console.log('📋 ProfileSettings loaded user data:', {
+              username: displayUsername,
+              name: parsedData.name,
+              industry: parsedData.industry
+            });
           } else {
             // Fallback to Firebase data
             setName(user.displayName || '');
+            console.log('⚠️ No stored user data found in ProfileSettings');
           }
         }
       } catch (error) {
@@ -113,7 +125,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
     setCheckingUsername(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch('http://172.16.8.229:5000/api/users/check-username', {
+      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.USERS.CHECK_USERNAME), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -163,7 +175,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch('http://172.16.8.229:5000/api/users/update-profile', {
+      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.USERS.UPDATE_PROFILE), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

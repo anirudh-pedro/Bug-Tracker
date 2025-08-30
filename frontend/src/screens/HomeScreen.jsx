@@ -336,17 +336,43 @@ const HomeScreen = ({ navigation, route }) => {
       console.log('Starting sign out process...');
       setShowProfileDropdown(false);
       
-      // Check if user is signed in with Google
-      const isGoogleSignedIn = await GoogleSignin.isSignedIn();
-      console.log('Google signed in status:', isGoogleSignedIn);
-      
-      if (isGoogleSignedIn) {
-        console.log('Signing out from Google...');
-        await GoogleSignin.signOut();
-        console.log('Google sign out successful');
+      // Clear stored user data from AsyncStorage
+      try {
+        const currentUser = auth().currentUser;
+        
+        // For complete sign-out, let's clear ALL AsyncStorage data
+        // This ensures the next login is treated as a completely new user
+        try {
+          const allKeys = await AsyncStorage.getAllKeys();
+          console.log('� Found keys to clear:', allKeys.length);
+          
+          if (allKeys.length > 0) {
+            await AsyncStorage.multiRemove(allKeys);
+            console.log('🗑️ Cleared ALL AsyncStorage data for fresh start');
+          }
+        } catch (clearError) {
+          console.error('Error clearing all storage:', clearError);
+          
+          // Fallback to just clearing user data
+          if (currentUser) {
+            await AsyncStorage.removeItem(`user_data_${currentUser.uid}`);
+            console.log('🗑️ Cleared stored user data');
+          }
+        }
+      } catch (storageError) {
+        console.log('Storage clear error:', storageError.message);
       }
       
-      console.log('Signing out from Firebase...');
+      // Sign out from both Google and Firebase
+      try {
+        // Try to sign out from Google if available
+        await GoogleSignin.signOut();
+        console.log('Google sign out successful');
+      } catch (googleError) {
+        console.log('Google sign out not needed or failed:', googleError.message);
+      }
+      
+      // Always sign out from Firebase
       await auth().signOut();
       console.log('Firebase sign out successful');
       console.log('User signed out successfully');
@@ -363,22 +389,8 @@ const HomeScreen = ({ navigation, route }) => {
       [
         {text: 'Cancel', style: 'cancel'},
         {text: 'Sign Out', style: 'destructive', onPress: signOut},
-        {text: 'Force Sign Out', style: 'destructive', onPress: forceSignOut},
       ],
     );
-  };
-
-  const forceSignOut = async () => {
-    try {
-      console.log('Force signing out...');
-      setShowProfileDropdown(false);
-      // Just sign out from Firebase - this should be enough to return to login
-      await auth().signOut();
-      console.log('Force sign out successful');
-    } catch (error) {
-      console.error('Force sign-out error:', error);
-      Alert.alert('Error', `Force sign out failed: ${error.message}`);
-    }
   };
 
   const handleProfileSettings = () => {

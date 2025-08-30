@@ -25,12 +25,35 @@ const googleAuth = async (req, res) => {
     console.log('🔍 Using Client ID:', GOOGLE_CLIENT_ID ? GOOGLE_CLIENT_ID.substring(0, 20) + '...' : 'MISSING');
     console.log('🔍 Token length:', idToken ? idToken.length : 0);
     
-    // Verify Google ID token
-    const ticket = await client.verifyIdToken({ 
-      idToken, 
-      audience: GOOGLE_CLIENT_ID 
-    });
-    const payload = ticket.getPayload();
+    // Verify Google ID token with retry logic
+    let ticket, payload;
+    try {
+      ticket = await client.verifyIdToken({ 
+        idToken, 
+        audience: GOOGLE_CLIENT_ID 
+      });
+      payload = ticket.getPayload();
+    } catch (verifyError) {
+      console.log('⚠️ First verification attempt failed, trying with different audience...');
+      console.log('🔍 Verify error details:', verifyError.message);
+      
+      // Try with web client ID as audience (common fix)
+      try {
+        ticket = await client.verifyIdToken({ 
+          idToken,
+          audience: [
+            GOOGLE_CLIENT_ID,
+            '505775401765-43mt53j5jri7f6pqtlq37b99s0ui216d.apps.googleusercontent.com' // Web client ID
+          ]
+        });
+        payload = ticket.getPayload();
+        console.log('✅ Token verified with alternative audience');
+      } catch (retryError) {
+        console.log('❌ Token verification failed completely:', retryError.message);
+        throw retryError;
+      }
+    }
+    
     console.log('🔍 Token payload received:', !!payload);
     
     const { sub: googleId, email, name, picture } = payload;
@@ -50,14 +73,14 @@ const googleAuth = async (req, res) => {
         googleId,
         avatar: picture,
         role: 'developer', // default role
-        onboardingCompleted: false
+        hasCompletedOnboarding: false
       });
       isNewUser = true;
       console.log('✅ New user created:', user._id);
     } else {
       console.log('👋 Existing user found:', user._id);
       console.log('🔍 User onboarding status:', {
-        onboardingCompleted: user.onboardingCompleted,
+        hasCompletedOnboarding: user.hasCompletedOnboarding,
         username: user.username,
         industry: user.industry
       });
@@ -73,7 +96,7 @@ const googleAuth = async (req, res) => {
 
     // Check if user needs onboarding - must have both username and onboarding completed
     const hasValidUsername = user.username && user.username.trim().length > 0;
-    const hasCompletedOnboarding = user.onboardingCompleted === true;
+    const hasCompletedOnboarding = user.hasCompletedOnboarding === true;
     const requiresOnboarding = !hasValidUsername || !hasCompletedOnboarding;
     
     console.log('🎯 Onboarding check details:', {
@@ -81,7 +104,7 @@ const googleAuth = async (req, res) => {
       hasCompletedOnboarding,
       requiresOnboarding,
       username: user.username,
-      onboardingCompleted: user.onboardingCompleted
+      hasCompletedOnboarding: user.hasCompletedOnboarding
     });
 
     const responseData = {
@@ -98,7 +121,7 @@ const googleAuth = async (req, res) => {
         role: user.role,
         industry: user.industry,
         phoneNumber: user.phoneNumber,
-        onboardingCompleted: user.onboardingCompleted
+        hasCompletedOnboarding: user.hasCompletedOnboarding
       }
     };
     

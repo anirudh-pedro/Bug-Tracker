@@ -190,7 +190,7 @@ const completeOnboarding = async (req, res) => {
         username: username,
         phoneNumber: phoneNumber,
         industry: industry,
-        onboardingCompleted: true,
+        hasCompletedOnboarding: true,
         updatedAt: new Date()
       },
       { new: true, runValidators: true }
