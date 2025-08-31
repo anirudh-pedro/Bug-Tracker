@@ -149,23 +149,35 @@ const checkUsernameAvailability = async (req, res) => {
 // @access  Private
 const completeOnboarding = async (req, res) => {
   try {
-    const { username, phoneNumber, industry } = req.body;
+    const { username, githubUrl, industry } = req.body;
     const userId = req.user.id;
 
     console.log('🚀 Complete onboarding request:', {
       userId,
       username,
-      phoneNumber,
+      githubUrl,
       industry,
-      userEmail: req.user.email
+      userEmail: req.user.email,
+      fullRequestBody: req.body,
+      authHeader: req.headers.authorization ? 'Present' : 'Missing'
     });
 
     // Validate required fields
-    if (!username || !phoneNumber || !industry) {
+    if (!username || !githubUrl || !industry) {
       console.log('❌ Missing required fields');
       return res.status(400).json({
         success: false,
-        message: 'Username, phone number, and industry are required'
+        message: 'Username, GitHub URL, and industry are required'
+      });
+    }
+
+    // Validate GitHub URL format
+    const githubRegex = /^https:\/\/github\.com\/[a-zA-Z0-9\-_]+\/?$/;
+    if (!githubRegex.test(githubUrl)) {
+      console.log('❌ Invalid GitHub URL format:', githubUrl);
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid GitHub URL (e.g., https://github.com/username)'
       });
     }
 
@@ -183,12 +195,22 @@ const completeOnboarding = async (req, res) => {
       });
     }
 
+    console.log('📝 About to update user with data:', {
+      userId,
+      updateData: {
+        username: username,
+        githubUrl: githubUrl,
+        industry: industry,
+        hasCompletedOnboarding: true
+      }
+    });
+
     // Update the user with onboarding data
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
         username: username,
-        phoneNumber: phoneNumber,
+        githubUrl: githubUrl,
         industry: industry,
         hasCompletedOnboarding: true,
         updatedAt: new Date()
@@ -207,7 +229,11 @@ const completeOnboarding = async (req, res) => {
     console.log('✅ User onboarding completed successfully:', {
       userId: updatedUser._id,
       username: updatedUser.username,
-      email: updatedUser.email
+      email: updatedUser.email,
+      githubUrl: updatedUser.githubUrl,
+      industry: updatedUser.industry,
+      hasCompletedOnboarding: updatedUser.hasCompletedOnboarding,
+      allFields: Object.keys(updatedUser.toObject ? updatedUser.toObject() : updatedUser)
     });
 
     res.json({
@@ -338,11 +364,73 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// @desc    Get user profile status (check if onboarding completed)
+// @route   GET /api/users/profile-status
+// @access  Private
+const getProfileStatus = async (req, res) => {
+  try {
+    console.log('🔍 PROFILE STATUS CHECK REQUESTED');
+    console.log('🔍 Checking if email has username in database...');
+    console.log('🔍 User ID:', req.user.id);
+    console.log('🔍 User email:', req.user.email);
+    
+    const user = await User.findById(req.user.id).select('-password');
+    
+    if (!user) {
+      console.log('❌ User not found in database for email:', req.user.email);
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const profileCompleted = !!(user.username && user.username.trim() !== '');
+    
+    console.log('📋 DATABASE CHECK RESULTS:');
+    console.log('  📧 Email:', user.email);
+    console.log('  🆔 User ID:', user._id);
+    console.log('  👤 Username in DB:', user.username || 'NULL/EMPTY');
+    console.log('  ✅ Username exists:', !!user.username);
+    console.log('  ✅ Username not empty:', user.username && user.username.trim() !== '');
+    console.log('  🎯 Profile completed:', profileCompleted);
+    
+    if (profileCompleted) {
+      console.log('✅ EXISTING USER - Email has username in database');
+    } else {
+      console.log('🆕 NEW USER - Email has NO username in database');
+    }
+
+    res.json({
+      success: true,
+      profileCompleted,
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        name: user.name,
+        avatar: user.avatar,
+        industry: user.industry,
+        phoneNumber: user.phoneNumber,
+        githubUrl: user.githubUrl,
+        role: user.role,
+        hasCompletedOnboarding: profileCompleted
+      }
+    });
+  } catch (error) {
+    console.error('Get profile status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   testAuth,
   debugUsers,
   clearAllUsers,
   checkUsernameAvailability,
   completeOnboarding,
-  updateProfile
+  updateProfile,
+  getProfileStatus
 };

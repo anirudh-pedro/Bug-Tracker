@@ -14,7 +14,6 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
-import { API_CONFIG, buildApiUrl } from '../config/apiConfig';
 
 const ProfileSettingsScreen = ({ navigation }) => {
   const user = auth().currentUser;
@@ -51,25 +50,14 @@ const ProfileSettingsScreen = ({ navigation }) => {
           const userData = await AsyncStorage.getItem(`user_data_${user.uid}`);
           if (userData) {
             const parsedData = JSON.parse(userData);
-            
-            // Never use tempUsername if we have a real username
-            const displayUsername = parsedData.username || ''; // Don't use tempUsername
-            
-            setUsername(displayUsername);
-            setOriginalUsername(displayUsername);
+            setUsername(parsedData.username || '');
+            setOriginalUsername(parsedData.username || '');
             setName(parsedData.name || user.displayName || '');
             setPhoneNumber(parsedData.phoneNumber || '');
             setIndustry(parsedData.industry || '');
-            
-            console.log('📋 ProfileSettings loaded user data:', {
-              username: displayUsername,
-              name: parsedData.name,
-              industry: parsedData.industry
-            });
           } else {
             // Fallback to Firebase data
             setName(user.displayName || '');
-            console.log('⚠️ No stored user data found in ProfileSettings');
           }
         }
       } catch (error) {
@@ -125,7 +113,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
     setCheckingUsername(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.USERS.CHECK_USERNAME), {
+      const response = await fetch('http://172.16.8.229:5000/api/users/check-username', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -175,7 +163,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.USERS.UPDATE_PROFILE), {
+      const response = await fetch('http://172.16.8.229:5000/api/users/update-profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -227,6 +215,42 @@ const ProfileSettingsScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('🚪 User logging out...');
+              
+              // Clear AsyncStorage
+              await AsyncStorage.clear();
+              console.log('✅ AsyncStorage cleared');
+              
+              // Sign out from Firebase
+              await auth().signOut();
+              console.log('✅ Firebase sign out successful');
+              
+              // Navigation will be handled automatically by App.jsx
+            } catch (error) {
+              console.error('❌ Logout error:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getUsernameIconColor = () => {
@@ -370,6 +394,15 @@ const ProfileSettingsScreen = ({ navigation }) => {
                   <Text style={styles.saveButtonText}>Save Changes</Text>
                 </>
               )}
+            </TouchableOpacity>
+
+            {/* Logout Button */}
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={handleLogout}
+            >
+              <Icon name="logout" size={20} color="#ef4444" />
+              <Text style={styles.logoutButtonText}>Sign Out</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -517,6 +550,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  logoutButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+    borderRadius: 12,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 16,
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ef4444',
   },
 });
 

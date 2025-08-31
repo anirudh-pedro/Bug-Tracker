@@ -13,11 +13,11 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
+import { apiRequest } from '../utils/networkUtils';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AntDesign from 'react-native-vector-icons/AntDesign';
-import { API_CONFIG, buildApiUrl } from '../config/apiConfig';
-import { testBackendConnectivity } from '../utils/connectivityTest';
+import { AUTH_CONFIG } from '../config/authConfig';
 
 // Configure Google Sign-In
 GoogleSignin.configure({
@@ -32,7 +32,6 @@ const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const scrollViewRef = useRef(null);
-  const [connectionStatus, setConnectionStatus] = useState(null);
   
   // Animation values
   const fadeAnim = new Animated.Value(1);
@@ -105,77 +104,6 @@ const LoginScreen = ({ navigation }) => {
       setCurrentSlide(slideIndex);
     }
   };
-  
-  // Test backend connectivity
-  const checkConnectivity = async () => {
-    try {
-      setConnectionStatus('checking');
-      
-      // Just test the main URL
-      const serverUrl = API_CONFIG.BASE_URL;
-      console.log(`🔍 Testing connection to: ${serverUrl}`);
-      
-      const result = await testBackendConnectivity();
-      
-      if (result.success) {
-        setConnectionStatus('connected');
-        
-        // Show details about the successful connection
-        Alert.alert(
-          'Connection Successful',
-          `Successfully connected to backend at ${API_CONFIG.BASE_URL}\n\n` +
-          `Server says: ${JSON.stringify(result.data)}`,
-          [{ text: 'OK' }]
-        );
-      } else {
-        setConnectionStatus('disconnected');
-        
-        // Show specific troubleshooting steps
-        Alert.alert(
-          'Connection Failed',
-          `Could not connect to server at: ${API_CONFIG.BASE_URL}\n\n` +
-          `Troubleshooting steps:\n` +
-          `1. Make sure the server is running\n` + 
-          `2. Verify your device is on the same network\n` +
-          `3. Try setting up port forwarding with ADB:\n` +
-          `   adb reverse tcp:5000 tcp:5000\n\n` +
-          `Current network status: ${navigator.connection?.type || 'unknown'}`,
-          [
-            { text: 'OK' },
-            { 
-              text: 'Server Info', 
-              onPress: () => {
-                Alert.alert(
-                  'Server Information',
-                  `Server URL: ${API_CONFIG.BASE_URL}\n` +
-                  `Health endpoint: ${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.HEALTH}\n` +
-                  `Auth endpoint: ${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.AUTH.GOOGLE}\n` +
-                  `\nNetwork info will be logged to console`,
-                  [{ text: 'OK' }]
-                );
-                // Log extra network info to console
-                console.log('📡 Network info:', {
-                  serverUrl: API_CONFIG.BASE_URL,
-                  networkType: navigator.connection?.type || 'unknown',
-                  effectiveType: navigator.connection?.effectiveType || 'unknown'
-                });
-              }
-            }
-          ]
-        );
-      }
-    } catch (error) {
-      setConnectionStatus('error');
-      Alert.alert(
-        'Connection Error',
-        `Error testing connection: ${error.message}`,
-        [{ text: 'OK' }]
-      );
-    } finally {
-      // Reset status after 3 seconds
-      setTimeout(() => setConnectionStatus(null), 3000);
-    }
-  };
 
   const signInWithGoogle = async () => {
     try {
@@ -209,8 +137,62 @@ const LoginScreen = ({ navigation }) => {
       
       console.log('✅ Firebase auth successful:', userCredential.user.displayName);
 
-      // That's it! Let App.jsx handle the rest automatically
-      // App.jsx will detect the auth state change and check onboarding status
+      // Send ID token to backend for authentication
+      console.log('📡 Sending request to backend...');
+      const response = await apiRequest('/api/auth/google', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ idToken }),
+      });
+
+      console.log('📡 Backend response status:', response.status);
+      const data = await response.json();
+      console.log('📡 Backend response data:', data);
+
+      if (data.success) {
+        console.log('✅ Backend authentication successful');
+        console.log('🔍 User needs onboarding:', data.requiresOnboarding);
+        console.log('🔍 Is new user:', data.isNewUser);
+        
+        // Clear any existing token first to avoid conflicts
+        await AsyncStorage.removeItem('userToken');
+        console.log('🧹 Cleared old token from AsyncStorage');
+        
+        // Store new token in AsyncStorage for future use
+        if (data.token) {
+          await AsyncStorage.setItem('userToken', data.token);
+          console.log('💾 New token stored in AsyncStorage');
+          console.log('🎫 New token preview:', data.token.substring(0, 30) + '...');
+        }
+
+        // Store user data in AsyncStorage with both Firebase UID and backend user ID
+        if (data.user) {
+          const userData = {
+            uid: userCredential.user.uid, // Firebase UID
+            id: data.user.id, // Backend user ID
+            username: data.user.username,
+            name: data.user.name,
+            email: data.user.email,
+            avatar: data.user.avatar,
+            industry: data.user.industry,
+            phoneNumber: data.user.phoneNumber,
+            role: data.user.role,
+            onboardingCompleted: data.user.hasCompletedOnboarding
+          };
+          
+          await AsyncStorage.setItem(`user_data_${userCredential.user.uid}`, JSON.stringify(userData));
+          console.log('💾 User data stored in AsyncStorage');
+        }
+        
+        // Store user data locally and let App.jsx handle navigation
+        console.log('✅ Authentication successful - App.jsx will handle navigation');
+        
+      } else {
+        console.error('❌ Backend authentication failed:', data.message);
+        Alert.alert('Authentication Error', data.message || 'Failed to authenticate with server');
+      }
       
     } catch (error) {
       console.error('❌ Google Sign-In Error:', error);
@@ -1342,42 +1324,6 @@ const LoginScreen = ({ navigation }) => {
               <Icon name="refresh" size={16} color="#ff6b6b" />
               <Text style={styles.devResetText}>Dev: Clear Auth</Text>
             </TouchableOpacity>
-            
-            {/* Connectivity Test Button */}
-            <TouchableOpacity 
-              style={styles.connectivityButton}
-              onPress={checkConnectivity}
-            >
-              <Icon 
-                name={
-                  connectionStatus === 'checking' ? 'sync' :
-                  connectionStatus === 'connected' ? 'check-circle' :
-                  connectionStatus === 'disconnected' ? 'error' :
-                  'wifi'
-                } 
-                size={16} 
-                color={
-                  connectionStatus === 'connected' ? '#4CAF50' :
-                  connectionStatus === 'disconnected' ? '#F44336' :
-                  '#2196F3'
-                }
-              />
-              <Text style={styles.connectivityText}>
-                {connectionStatus === 'checking' ? 'Checking...' :
-                 connectionStatus === 'connected' ? 'Connected' :
-                 connectionStatus === 'disconnected' ? 'Disconnected' :
-                 'Test Connection'}
-              </Text>
-            </TouchableOpacity>
-            
-            {/* Network Diagnostics Screen Button */}
-            <TouchableOpacity 
-              style={styles.diagnosticsButton}
-              onPress={() => navigation.navigate('NetworkDiagnostics')}
-            >
-              <Icon name="bug-report" size={16} color="#FFC107" />
-              <Text style={styles.diagnosticsText}>Network Diagnostics</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </SafeAreaView>
@@ -2073,44 +2019,6 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 10,
     opacity: 0.8,
-  },
-  connectivityButton: {
-    backgroundColor: '#1a1a1a',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#2196F3',
-    gap: 8,
-    marginTop: 10,
-    opacity: 0.8,
-  },
-  connectivityText: {
-    color: '#2196F3',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  diagnosticsButton: {
-    backgroundColor: '#1a1a1a',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#FFC107',
-    gap: 8,
-    marginTop: 10,
-    opacity: 0.8,
-  },
-  diagnosticsText: {
-    color: '#FFC107',
-    fontSize: 14,
-    fontWeight: '500',
   },
   devResetText: {
     color: '#ff6b6b',

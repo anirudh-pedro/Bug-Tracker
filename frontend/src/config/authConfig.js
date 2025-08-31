@@ -1,9 +1,14 @@
 // Auth Configuration
 export const AUTH_CONFIG = {
-  // Backend endpoints
+  // Backend endpoints - for USB-connected physical device
   BACKEND_URL: __DEV__ 
-    ? 'http://192.168.212.115:5000' // Your current development IP
+    ? 'http://10.40.174.115:5000' // Your computer's IP address for USB-connected phone
     : 'https://your-production-api.com',
+  
+  // Fallback URLs for connectivity issues
+  FALLBACK_URLS: __DEV__ 
+    ? ['http://10.40.174.115:5000', 'http://localhost:5000', 'http://10.0.2.2:5000']
+    : [],
   
   // Google Sign-In
   GOOGLE_WEB_CLIENT_ID: '505775401765-43mt53j5jri7f6pqtlq37b99s0ui216d.apps.googleusercontent.com',

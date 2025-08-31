@@ -9,17 +9,17 @@ import {
   Image,
   ScrollView,
   Alert,
-  BackHandler,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_CONFIG, buildApiUrl } from '../config/apiConfig';
 import auth from '@react-native-firebase/auth';
+import { apiRequest } from '../utils/networkUtils';
+import { AUTH_CONFIG } from '../config/authConfig';
 
 const GetStartedScreen = ({ navigation, route }) => {
   const [username, setUsername] = useState('');
   const [industry, setIndustry] = useState('Select');
-  const [contactNumber, setContactNumber] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
   const [showIndustryDropdown, setShowIndustryDropdown] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
@@ -27,6 +27,18 @@ const GetStartedScreen = ({ navigation, route }) => {
 
   const user = route?.params?.user || {};
   const [token, setToken] = useState(route?.params?.token || '');
+
+  // DEBUG: Log when component mounts/unmounts
+  useEffect(() => {
+    console.log('🔥 GetStartedScreen MOUNTED');
+    console.log('📋 Route params:', route?.params);
+    console.log('👤 User from params:', user);
+    console.log('🎫 Token from params:', token ? 'HAS TOKEN' : 'NO TOKEN');
+    
+    return () => {
+      console.log('🔥 GetStartedScreen UNMOUNTED');
+    };
+  }, []);
 
   // Load token from AsyncStorage if not available in params
   useEffect(() => {
@@ -51,76 +63,42 @@ const GetStartedScreen = ({ navigation, route }) => {
     
     loadToken();
   }, [token]);
-  
-  // Handle back button presses to sign out and go to login screen
-  useEffect(() => {
-    const backHandler = navigation.addListener('beforeRemove', (e) => {
-      // Only handle normal back button presses, not navigation.navigate/reset calls
-      if (e.data.action.type === 'GO_BACK' || e.data.action.type === 'POP') {
-        // Prevent default back behavior
-        e.preventDefault();
-        
-        // Show confirmation alert
-        Alert.alert(
-          'Exit Onboarding',
-          'If you go back, you will need to sign in again. Are you sure?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Go Back to Login', 
-              style: 'destructive', 
-              onPress: async () => {
-                console.log('⬅️ User chose to exit onboarding, signing out...');
-                
-                try {
-                  // Clear all AsyncStorage data
-                  const allKeys = await AsyncStorage.getAllKeys();
-                  await AsyncStorage.multiRemove(allKeys);
-                  console.log('🗑️ Cleared all stored user data');
-                  
-                  // Sign out from auth
-                  await auth().signOut();
-                  console.log('🚪 User signed out');
-                  
-                  // Now we can proceed with the navigation action
-                  navigation.dispatch(e.data.action);
-                } catch (error) {
-                  console.error('❌ Error signing out:', error);
-                  Alert.alert('Error', 'Failed to sign out. Please try again.');
-                }
-              } 
+
+  // Function to handle re-authentication when no token is available
+  const handleReAuthenticate = async () => {
+    try {
+      console.log('🔄 Re-authenticating user...');
+      Alert.alert(
+        'Re-authentication Required',
+        'You need to sign in again to complete your profile. You will be redirected to the login screen.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Sign In Again',
+            onPress: async () => {
+              // Sign out current user and redirect to login
+              await auth().signOut();
+              // The App.jsx will automatically redirect to Login screen
             },
-          ]
-        );
-      }
-    });
-    
-    return backHandler;
-  }, [navigation]);
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('❌ Error during re-authentication:', error);
+      Alert.alert('Error', 'Failed to re-authenticate. Please try again.');
+    }
+  };
 
   // Check if user has already completed onboarding
   useEffect(() => {
     const checkOnboardingStatus = async () => {
       try {
-        // Check if user already has username and completed onboarding
-        if (user.username && user.onboardingCompleted) {
-          console.log('🔄 User already completed onboarding, redirecting to Home');
-          navigation.replace('Home');
-          return;
-        }
-
-        // Also check AsyncStorage as backup
-        const hasCompletedOnboarding = await AsyncStorage.getItem(`user_onboarding_${user.uid}`);
-        const userData = await AsyncStorage.getItem(`user_data_${user.uid}`);
-        
-        if (hasCompletedOnboarding && userData) {
-          const parsedUserData = JSON.parse(userData);
-          if (parsedUserData.username) {
-            console.log('🔄 User found in AsyncStorage with username, redirecting to Home');
-            navigation.replace('Home');
-            return;
-          }
-        }
+        // We don't need to redirect anymore, because this screen 
+        // is only shown when needed based on username check
+        console.log('� User directed to profile completion page');
       } catch (error) {
         console.error('Error checking onboarding status:', error);
         // On error, stay on GetStarted screen to be safe
@@ -130,7 +108,7 @@ const GetStartedScreen = ({ navigation, route }) => {
     if (user.uid || user.id) {
       checkOnboardingStatus();
     }
-  }, [user, navigation]);
+  }, [user]);
 
   const industries = [
     'Technology',
@@ -186,12 +164,13 @@ const GetStartedScreen = ({ navigation, route }) => {
     
     setCheckingUsername(true);
     try {
-      const response = await fetch(`${buildApiUrl(API_CONFIG.ENDPOINTS.USERS.CHECK_USERNAME)}/${username}`, {
-        method: 'GET',
+      const response = await apiRequest('/api/users/check-username', {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ username }),
       });
 
       const data = await response.json();
@@ -219,14 +198,18 @@ const GetStartedScreen = ({ navigation, route }) => {
 
   const handleGetStarted = async () => {
     console.log('🔥 Get Started button pressed');
-    console.log('📋 Current form data:', { username, industry, contactNumber });
+    console.log('📋 Current form data:', { username, industry, githubUrl });
     console.log('🔍 Username available:', usernameAvailable);
     console.log('❌ Username error:', usernameError);
     console.log('🎫 Token available:', !!token);
     console.log('🎫 Token preview:', token ? token.substring(0, 30) + '...' : 'NO TOKEN');
 
-    // TEMPORARY: Skip username validation for testing
-    console.log('⚠️ TEMPORARY: Skipping username validation for testing');
+    // Check username availability before proceeding
+    if (!usernameAvailable) {
+      console.log('❌ Username is not available or not checked yet');
+      Alert.alert('Username Error', 'Please ensure your username is available before proceeding');
+      return;
+    }
     
     if (!username.trim()) {
       console.log('❌ Username validation failed: empty');
@@ -240,17 +223,17 @@ const GetStartedScreen = ({ navigation, route }) => {
       return;
     }
     
-    if (!contactNumber.trim()) {
-      console.log('❌ Contact number validation failed: empty');
-      Alert.alert('Required Field', 'Please enter your contact number');
+    if (!githubUrl.trim()) {
+      console.log('❌ GitHub URL validation failed: empty');
+      Alert.alert('Required Field', 'Please enter your GitHub URL');
       return;
     }
 
-    // Validate phone number - must be exactly 10 digits
-    const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(contactNumber.trim())) {
-      console.log('❌ Phone number validation failed:', contactNumber);
-      Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit phone number');
+    // Validate GitHub URL format
+    const githubRegex = /^https:\/\/github\.com\/[a-zA-Z0-9\-_]+\/?$/;
+    if (!githubRegex.test(githubUrl.trim())) {
+      console.log('❌ GitHub URL validation failed:', githubUrl);
+      Alert.alert('Invalid GitHub URL', 'Please enter a valid GitHub URL (e.g., https://github.com/username)');
       return;
     }
 
@@ -280,13 +263,13 @@ const GetStartedScreen = ({ navigation, route }) => {
       console.log('🚀 Submitting onboarding data:', {
         username: username.trim(),
         industry,
-        phoneNumber: contactNumber.trim()
+        githubUrl: githubUrl.trim()
       });
 
       console.log('🔍 Testing authentication first...');
       
       // First test if authentication works
-      const authTestResponse = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.USERS.TEST_AUTH), {
+      const authTestResponse = await apiRequest('/api/users/test-auth', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -312,8 +295,29 @@ const GetStartedScreen = ({ navigation, route }) => {
 
       console.log('✅ Authentication test passed, proceeding with onboarding...');
 
+      // Final username check before submitting
+      console.log('🔍 Performing final username availability check...');
+      const finalUsernameCheck = await apiRequest('/api/users/check-username', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ username: username.trim() }),
+      });
+
+      const finalCheckData = await finalUsernameCheck.json();
+      console.log('🔍 Final username check result:', finalCheckData);
+
+      if (!finalCheckData.available) {
+        console.log('❌ Username no longer available');
+        Alert.alert('Username Taken', 'This username is no longer available. Please choose another one.');
+        setUsernameAvailable(false);
+        return;
+      }
+
       // Submit to backend
-      const response = await fetch(buildApiUrl(API_CONFIG.ENDPOINTS.USERS.COMPLETE_ONBOARDING), {
+      const response = await apiRequest('/api/users/complete-onboarding', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -321,7 +325,7 @@ const GetStartedScreen = ({ navigation, route }) => {
         },
         body: JSON.stringify({
           username: username.trim(),
-          phoneNumber: contactNumber.trim(),
+          githubUrl: githubUrl.trim(),
           industry: industry
         }),
       });
@@ -336,89 +340,68 @@ const GetStartedScreen = ({ navigation, route }) => {
 
       console.log('✅ User onboarding completed:', data);
 
-      // Update stored user data with complete information
-      try {
-        const existingUserData = await AsyncStorage.getItem(`user_data_${user.uid}`);
-        let userData = existingUserData ? JSON.parse(existingUserData) : {};
-        
-        // Update with new onboarding data
-        userData = {
-          ...userData,
-          uid: user.uid,
-          username: username.trim(),
-          phoneNumber: contactNumber.trim(),
-          industry: industry,
-          hasCompletedOnboarding: true,
-          completedAt: new Date().toISOString()
-        };
-        
-        await AsyncStorage.setItem(`user_data_${user.uid}`, JSON.stringify(userData));
-        console.log('✅ Updated user data in storage:', userData);
-        
-        // Record this email in login history to prevent showing GetStarted again
-        if (user.email) {
-          await AsyncStorage.setItem(`login_history_${user.email}`, new Date().toISOString());
-          console.log('📝 Recorded login history for:', user.email);
-        }
-        
-        // Verify the data was properly saved
-        const verifyData = await AsyncStorage.getItem(`user_data_${user.uid}`);
-        if (verifyData) {
-          const parsedData = JSON.parse(verifyData);
-          console.log('✅ VERIFICATION - Data stored successfully:', {
-            username: parsedData.username,
-            hasCompletedOnboarding: parsedData.hasCompletedOnboarding
-          });
-        }
-      } catch (storageError) {
-        console.error('Error updating stored user data:', storageError);
-      }
+      // Save user data locally as well
+      const userData = {
+        uid: user.uid || user.id,
+        username: username.trim(),
+        githubUrl: githubUrl.trim(),
+        industry: industry,
+        completedAt: new Date().toISOString()
+      };
+      
+      await AsyncStorage.setItem(`user_data_${user.uid || user.id}`, JSON.stringify(userData));
+      await AsyncStorage.setItem(`user_onboarding_${user.uid || user.id}`, 'completed');
 
       console.log('✅ Data saved locally');
 
-      // Navigate to main app
-      console.log('🚀 Navigating to Main');
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Main' }]
-      });
+      // Call refresh function to update auth state in App.jsx
+      const refreshProfileStatus = route?.params?.refreshProfileStatus;
+      if (refreshProfileStatus) {
+        console.log('🔄 Calling refresh function to update auth state...');
+        refreshProfileStatus();
+      } else {
+        console.log('⚠️ No refresh function available in route params');
+      }
+
+      console.log('✅ Profile completed successfully - App.jsx will handle navigation');
+      
     } catch (error) {
       console.error('❌ Error completing onboarding:', error);
       Alert.alert('Error', error.message || 'Failed to save your information. Please try again.');
     }
   };
 
-  // Function to show the sign out confirmation
-  const confirmGoBack = () => {
+  // Handle logout - back button functionality
+  const handleLogout = async () => {
     Alert.alert(
-      'Exit Onboarding',
-      'If you go back, you will need to sign in again. Are you sure?',
+      'Go Back',
+      'Going back will sign you out. Are you sure?',
       [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Go Back to Login', 
-          style: 'destructive', 
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
           onPress: async () => {
             try {
-              // Clear all AsyncStorage data
-              const allKeys = await AsyncStorage.getAllKeys();
-              await AsyncStorage.multiRemove(allKeys);
-              console.log('🗑️ Cleared all stored user data');
+              console.log('🚪 User logging out from GetStarted page...');
               
-              // Sign out from auth
+              // Clear AsyncStorage
+              await AsyncStorage.clear();
+              console.log('✅ AsyncStorage cleared');
+              
+              // Sign out from Firebase
               await auth().signOut();
-              console.log('🚪 User signed out');
+              console.log('✅ Firebase sign out successful');
               
-              // Now go back to login
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' }]
-              });
+              // Navigation will be handled automatically by App.jsx
             } catch (error) {
-              console.error('❌ Error signing out:', error);
+              console.error('❌ Logout error:', error);
               Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
-          }
+          },
         },
       ]
     );
@@ -426,16 +409,16 @@ const GetStartedScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Back Button / Header */}
+      {/* Header with Back Button */}
       <View style={styles.header}>
         <TouchableOpacity 
-          onPress={confirmGoBack}
-          style={styles.backButton}
-          activeOpacity={0.7}
+          style={styles.backButton} 
+          onPress={handleLogout}
         >
-          <Icon name="arrow-back" size={24} color="#fff" />
-          <Text style={styles.backButtonText}>Back</Text>
+          <Icon name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Complete Your Profile</Text>
+        <View style={styles.headerSpacer} />
       </View>
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -474,13 +457,28 @@ const GetStartedScreen = ({ navigation, route }) => {
         <View style={styles.welcomeContainer}>
           <Text style={styles.greeting}>Hello {user.displayName || 'User'}</Text>
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>Welcome to Bug Tracker </Text>
-            <Text style={styles.emoji}>🎉</Text>
+            <Text style={styles.title}>Complete Your Profile</Text>
+            <Text style={styles.emoji}>📝</Text>
           </View>
+          
+          {/* Show message if no token available */}
+          {!token && (
+            <View style={styles.noTokenContainer}>
+              <Text style={styles.noTokenText}>
+                ⚠️ Authentication required to complete profile
+              </Text>
+              <TouchableOpacity 
+                style={styles.reAuthButton}
+                onPress={handleReAuthenticate}
+              >
+                <Text style={styles.reAuthButtonText}>Sign In Again</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Form Section */}
-        <View style={styles.formContainer}>
+        <View style={[styles.formContainer, !token && styles.disabledForm]}>
           {/* Username Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
@@ -500,6 +498,7 @@ const GetStartedScreen = ({ navigation, route }) => {
                 autoCapitalize="none"
                 autoCorrect={false}
                 maxLength={30}
+                editable={!!token}
               />
               {checkingUsername && (
                 <View style={styles.inputIcon}>
@@ -534,7 +533,8 @@ const GetStartedScreen = ({ navigation, route }) => {
             <Text style={styles.label}>Industry</Text>
             <TouchableOpacity 
               style={styles.dropdown}
-              onPress={() => setShowIndustryDropdown(!showIndustryDropdown)}
+              onPress={() => token && setShowIndustryDropdown(!showIndustryDropdown)}
+              disabled={!token}
             >
               <Text style={[styles.dropdownText, industry === 'Select' && styles.placeholder]}>
                 {industry}
@@ -566,49 +566,59 @@ const GetStartedScreen = ({ navigation, route }) => {
             )}
           </View>
 
-          {/* Contact Number Input */}
+          {/* GitHub URL Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
-              Contact Number <Text style={styles.required}>*</Text>
+              GitHub URL <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
               style={[
                 styles.textInput,
-                contactNumber && !/^\d{10}$/.test(contactNumber.trim()) && styles.invalidInput
+                githubUrl && !/^https:\/\/github\.com\/[a-zA-Z0-9\-_]+\/?$/.test(githubUrl.trim()) && styles.invalidInput
               ]}
-              placeholder="Enter 10-digit Contact Number"
+              placeholder="https://github.com/username"
               placeholderTextColor="#888888"
-              value={contactNumber}
+              value={githubUrl}
               onChangeText={(text) => {
-                // Only allow numbers and limit to 10 digits
-                const numericText = text.replace(/[^0-9]/g, '').slice(0, 10);
-                setContactNumber(numericText);
+                if (!token) return;
+                setGithubUrl(text);
               }}
-              keyboardType="numeric"
-              maxLength={10}
+              keyboardType="url"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!!token}
             />
-            {contactNumber && !/^\d{10}$/.test(contactNumber.trim()) && (
+            {githubUrl && !/^https:\/\/github\.com\/[a-zA-Z0-9\-_]+\/?$/.test(githubUrl.trim()) && (
               <Text style={styles.validationError}>
-                Please enter exactly 10 digits
+                Please enter a valid GitHub URL (e.g., https://github.com/username)
               </Text>
             )}
-            {contactNumber && /^\d{10}$/.test(contactNumber.trim()) && (
+            {githubUrl && /^https:\/\/github\.com\/[a-zA-Z0-9\-_]+\/?$/.test(githubUrl.trim()) && (
               <Text style={styles.validationSuccess}>
-                ✓ Valid phone number
+                ✓ Valid GitHub URL
               </Text>
             )}
           </View>
 
           {/* Get Started Button */}
           <TouchableOpacity 
-            style={styles.getStartedButton}
+            style={[
+              styles.getStartedButton,
+              !token && styles.disabledButton
+            ]}
             onPress={() => {
+              if (!token) {
+                handleReAuthenticate();
+                return;
+              }
               console.log('🚨 BUTTON PRESSED - onPress triggered');
               handleGetStarted();
             }}
             activeOpacity={0.7}
           >
-            <Text style={styles.getStartedText}>Get Started</Text>
+            <Text style={styles.getStartedText}>
+              {!token ? 'Sign In Required' : 'Save Profile'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -619,27 +629,31 @@ const GetStartedScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#000000',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#121212',
+    paddingVertical: 15,
+    backgroundColor: '#1a1a1a',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+    borderRadius: 8,
+    backgroundColor: '#333333',
   },
-  backButtonText: {
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
     color: '#ffffff',
-    marginLeft: 5,
-    fontWeight: '500',
-    fontSize: 16,
+    textAlign: 'center',
+  },
+  headerSpacer: {
+    width: 40, // Same width as back button to center the title
   },
   scrollView: {
     flex: 1,
@@ -764,9 +778,38 @@ const styles = StyleSheet.create({
     fontSize: 28,
     marginLeft: 8,
   },
+  noTokenContainer: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ff6b6b',
+  },
+  noTokenText: {
+    color: '#ff6b6b',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  reAuthButton: {
+    backgroundColor: '#ff6b6b',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 15,
+    alignSelf: 'center',
+  },
+  reAuthButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
   formContainer: {
     paddingHorizontal: 30,
     paddingVertical: 20,
+  },
+  disabledForm: {
+    opacity: 0.6,
   },
   inputGroup: {
     marginBottom: 30,
@@ -897,6 +940,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#ffffff',
+  },
+  disabledButton: {
+    backgroundColor: '#666666',
+    opacity: 0.7,
   },
 });
 

@@ -46,6 +46,17 @@ const userSchema = new mongoose.Schema({
     },
     default: ''
   },
+  githubUrl: {
+    type: String,
+    validate: {
+      validator: function(v) {
+        // Allow empty GitHub URL or validate proper GitHub URL format
+        return !v || /^https:\/\/github\.com\/[a-zA-Z0-9\-_]+\/?$/.test(v);
+      },
+      message: 'GitHub URL must be a valid GitHub profile URL (e.g., https://github.com/username)'
+    },
+    default: ''
+  },
   industry: {
     type: String,
     enum: {

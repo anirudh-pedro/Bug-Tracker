@@ -14,10 +14,8 @@ import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
 
 const ProfileScreen = () => {
-  const navigation = useNavigation();
   const user = auth().currentUser;
   const [userProfile, setUserProfile] = useState({
     username: '',
@@ -54,32 +52,6 @@ const ProfileScreen = () => {
 
   const signOut = async () => {
     try {
-      // Clear stored user data from AsyncStorage
-      try {
-        // For complete sign-out, let's clear ALL AsyncStorage data
-        // This ensures the next login is treated as a completely new user
-        try {
-          const allKeys = await AsyncStorage.getAllKeys();
-          console.log('🔍 Found keys to clear:', allKeys.length);
-          
-          if (allKeys.length > 0) {
-            await AsyncStorage.multiRemove(allKeys);
-            console.log('🗑️ Cleared ALL AsyncStorage data for fresh start');
-          }
-        } catch (clearError) {
-          console.error('Error clearing all storage:', clearError);
-          
-          // Fallback to just clearing user data
-          const currentUser = auth().currentUser;
-          if (currentUser) {
-            await AsyncStorage.removeItem(`user_data_${currentUser.uid}`);
-            console.log('🗑️ Cleared stored user data');
-          }
-        }
-      } catch (storageError) {
-        console.log('Storage clear error:', storageError.message);
-      }
-      
       await GoogleSignin.signOut();
       await auth().signOut();
       console.log('User signed out successfully');
@@ -98,64 +70,6 @@ const ProfileScreen = () => {
         {text: 'Sign Out', style: 'destructive', onPress: signOut},
       ],
     );
-  };
-
-  // Check if profile is incomplete
-  const hasIncompleteProfile = () => {
-    const missingFields = [];
-    
-    if (!userProfile.username || userProfile.username.trim() === '') {
-      missingFields.push('username');
-    }
-    
-    if (!userProfile.industry || userProfile.industry === 'Select') {
-      missingFields.push('industry');
-    }
-    
-    if (!userProfile.phoneNumber || userProfile.phoneNumber.trim() === '') {
-      missingFields.push('phone number');
-    }
-    
-    // Store missing fields for UI display
-    setMissingFields(missingFields);
-    
-    // If any required fields are missing, return true (profile is incomplete)
-    return missingFields.length > 0;
-  };
-
-  // State to track missing fields
-  const [missingFields, setMissingFields] = useState([]);
-
-  // Navigate to complete profile
-  const navigateToCompleteProfile = async () => {
-    try {
-      const currentUser = auth().currentUser;
-      if (currentUser?.uid) {
-        // Mark the user as needing to complete their profile
-        if (global.forceProfileCompletion) {
-          await global.forceProfileCompletion(currentUser.uid);
-          
-          Alert.alert(
-            'Profile Update Required',
-            'You will now be redirected to complete your profile information.',
-            [
-              { 
-                text: 'Continue', 
-                onPress: () => navigation.navigate('GetStarted')
-              }
-            ]
-          );
-        } else {
-          // Fallback if global function isn't available
-          navigation.navigate('GetStarted');
-        }
-      } else {
-        Alert.alert('Error', 'Could not identify your user account. Please sign out and sign in again.');
-      }
-    } catch (error) {
-      console.error('Error navigating to profile completion:', error);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
-    }
   };
 
   const menuItems = [
@@ -279,32 +193,6 @@ const ProfileScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
-
-          {/* Complete Profile Button - Show only if profile is incomplete */}
-          {hasIncompleteProfile() && (
-            <View style={styles.completeProfileContainer}>
-              <TouchableOpacity 
-                style={styles.completeProfileButton} 
-                onPress={navigateToCompleteProfile}
-              >
-                <Icon name="edit" size={24} color="#3b82f6" />
-                <Text style={styles.completeProfileButtonText}>Complete Your Profile</Text>
-              </TouchableOpacity>
-              <Text style={styles.incompleteProfileText}>
-                Your profile is incomplete. Missing information:
-              </Text>
-              <View style={styles.missingFieldsList}>
-                {missingFields.map((field, index) => (
-                  <View key={index} style={styles.missingField}>
-                    <Icon name="error-outline" size={16} color="#f59e0b" />
-                    <Text style={styles.missingFieldText}>
-                      {field.charAt(0).toUpperCase() + field.slice(1)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
 
           {/* Sign Out Button */}
           <View style={styles.signOutContainer}>
@@ -515,55 +403,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 50,
     fontWeight: '600',
-  },
-  completeProfileContainer: {
-    marginBottom: 20,
-    padding: 16,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#3b82f6',
-  },
-  completeProfileButton: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#3b82f6',
-    gap: 12,
-    marginBottom: 12,
-  },
-  completeProfileButtonText: {
-    color: '#3b82f6',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  incompleteProfileText: {
-    color: '#a0a0a0',
-    fontSize: 14,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    marginBottom: 12,
-  },
-  missingFieldsList: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderRadius: 8,
-    padding: 12,
-    gap: 8,
-  },
-  missingField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  missingFieldText: {
-    color: '#f59e0b',
-    fontSize: 14,
-    fontWeight: '500',
   },
 });
 
