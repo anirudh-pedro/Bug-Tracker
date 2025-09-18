@@ -140,10 +140,32 @@ const bugSchema = new mongoose.Schema({
       required: true,
       maxlength: [1000, 'Comment cannot exceed 1000 characters']
     },
+    githubProfile: {
+      type: String,
+      trim: true
+    },
+    githubPullRequest: {
+      url: String,
+      title: String,
+      status: {
+        type: String,
+        enum: ['open', 'merged', 'closed', 'draft']
+      },
+      createdAt: Date
+    },
     attachments: [{
       filename: String,
       url: String
     }],
+    isResolutionComment: {
+      type: Boolean,
+      default: false
+    },
+    pointsAwarded: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
     createdAt: {
       type: Date,
       default: Date.now
@@ -184,7 +206,96 @@ const bugSchema = new mongoose.Schema({
   duplicateOf: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Bug'
-  }
+  },
+  
+  // GitHub Integration
+  githubRepo: {
+    url: {
+      type: String,
+      trim: true
+    },
+    owner: String,
+    name: String,
+    isPublic: {
+      type: Boolean,
+      default: true
+    }
+  },
+  githubIssue: {
+    number: Number,
+    url: String,
+    status: {
+      type: String,
+      enum: ['open', 'closed']
+    }
+  },
+  pullRequests: [{
+    number: Number,
+    url: String,
+    title: String,
+    author: {
+      githubUsername: String,
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    },
+    status: {
+      type: String,
+      enum: ['open', 'merged', 'closed', 'draft']
+    },
+    createdAt: Date,
+    mergedAt: Date
+  }],
+  forks: [{
+    githubUsername: String,
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    forkUrl: String,
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  
+  // Points and Rewards System
+  bountyPoints: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  pointsAwarded: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  awardedTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  pointsAwardedAt: Date,
+  
+  // Resolution tracking
+  resolvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  resolutionPullRequest: {
+    url: String,
+    title: String,
+    number: Number
+  },
+  verifiedResolution: {
+    type: Boolean,
+    default: false
+  },
+  verifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  verifiedAt: Date
 }, {
   timestamps: true
 });
@@ -198,6 +309,10 @@ bugSchema.index({ assignedTo: 1 });
 bugSchema.index({ status: 1 });
 bugSchema.index({ priority: 1 });
 bugSchema.index({ createdAt: -1 });
+bugSchema.index({ resolvedBy: 1 });
+bugSchema.index({ awardedTo: 1 });
+bugSchema.index({ bountyPoints: -1 });
+bugSchema.index({ 'githubRepo.owner': 1, 'githubRepo.name': 1 });
 bugSchema.index({ 'project': 1, 'status': 1 });
 
 // Generate bug ID before saving

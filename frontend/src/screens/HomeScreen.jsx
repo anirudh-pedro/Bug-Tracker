@@ -19,6 +19,7 @@ import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiRequest } from '../utils/networkUtils';
 
 const {width: screenWidth} = Dimensions.get('window');
 const isTablet = screenWidth >= 768;
@@ -306,20 +307,13 @@ const HomeScreen = ({ navigation, route }) => {
     }
 
     try {
-      // Here you would typically save the project to your backend
-      console.log('Creating project:', projectName);
-      console.log('User info:', route?.params?.userInfo);
-      
-      // Close modal and clear state
+      // Simple project creation - navigate to dedicated screen for full details
+      navigation.navigate('CreateProject');
       setShowCreateProjectModal(false);
       setProjectName('');
       
-      // Show success message
-      Alert.alert('Success', `Project "${projectName}" created successfully!`);
-      
     } catch (error) {
-      console.error('Error creating project:', error);
-      Alert.alert('Error', 'Failed to create project. Please try again.');
+      console.error('Error navigating to create project:', error);
     }
   };
 
@@ -682,7 +676,7 @@ const HomeScreen = ({ navigation, route }) => {
               style={styles.createButton}
               onPress={handleCreateProject}
             >
-              <Text style={styles.createButtonText}>Create</Text>
+              <Text style={styles.createButtonText}>Continue</Text>
             </TouchableOpacity>
           </View>
         </View>

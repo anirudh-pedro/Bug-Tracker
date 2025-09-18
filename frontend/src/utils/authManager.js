@@ -122,7 +122,11 @@ class AuthManager {
       console.log('📡 AuthManager: Authenticating with backend...');
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), AUTH_CONFIG.AUTH_TIMEOUT);
+      // Increase timeout for auth requests to 30 seconds
+      const timeoutId = setTimeout(() => {
+        console.log('⏰ AuthManager: Backend auth request timed out');
+        controller.abort();
+      }, AUTH_CONFIG.AUTH_TIMEOUT);
 
       const response = await fetch(`${AUTH_CONFIG.BACKEND_URL}/api/auth/google`, {
         method: 'POST',
@@ -147,8 +151,10 @@ class AuthManager {
 
     } catch (error) {
       if (error.name === 'AbortError') {
-        return { success: false, error: 'Authentication timeout' };
+        console.error('❌ AuthManager: Backend authentication timed out');
+        return { success: false, error: 'Authentication request timed out. Please check your internet connection and try again.' };
       }
+      console.error('❌ AuthManager: Backend authentication error:', error);
       return { success: false, error: error.message };
     }
   }
@@ -274,8 +280,16 @@ class AuthManager {
   // Check if error is network-related (for retry logic)
   isNetworkError(error) {
     const networkErrorCodes = ['NETWORK_ERROR', 'TIMEOUT', 'CONNECTION_FAILED'];
-    return networkErrorCodes.some(code => 
-      error.message?.includes(code) || error.code?.includes(code)
+    return (
+      error.name === 'AbortError' ||
+      error.message?.includes('timed out') ||
+      error.message?.includes('Network request failed') ||
+      error.message?.includes('ECONNRESET') ||
+      error.message?.includes('ENOTFOUND') ||
+      error.message?.includes('timeout') ||
+      networkErrorCodes.some(code => 
+        error.message?.includes(code) || error.code?.includes(code)
+      )
     );
   }
 

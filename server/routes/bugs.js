@@ -151,7 +151,21 @@ router.post('/', authenticate, [
       });
     }
 
-    const { title, description, priority, project } = req.body;
+    const { 
+      title, 
+      description, 
+      priority, 
+      project,
+      stepsToReproduce,
+      expectedBehavior,
+      actualBehavior,
+      environment: envDescription,
+      category,
+      repositoryUrl,
+      githubRepo,
+      bountyPoints,
+      tags
+    } = req.body;
 
     // Generate bug ID
     const bugCount = await Bug.countDocuments();
@@ -165,11 +179,21 @@ router.post('/', authenticate, [
       status: 'open',
       reporter: req.user._id,
       project: project || null,
+      stepsToReproduce: stepsToReproduce || '',
+      expectedBehavior: expectedBehavior || '',
+      actualBehavior: actualBehavior || '',
+      category: category || 'Bug',
+      tags: tags || [],
       environment: {
         os: 'Unknown',
         browser: 'Unknown',
-        version: '1.0.0'
-      }
+        version: '1.0.0',
+        description: envDescription || ''
+      },
+      // GitHub integration fields
+      githubRepo: githubRepo || null,
+      repositoryUrl: repositoryUrl || '',
+      bountyPoints: bountyPoints || 0
     });
 
     await newBug.save();
@@ -192,6 +216,176 @@ router.post('/', authenticate, [
       success: false,
       message: 'Server error while creating bug',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// @desc    Award points for resolving a bug
+// @route   POST /api/bugs/:bugId/award-points
+// @access  Private
+router.post('/:bugId/award-points', authenticate, [
+  param('bugId').isMongoId().withMessage('Invalid bug ID'),
+  body('points').isInt({ min: 1, max: 1000 }).withMessage('Points must be between 1 and 1000'),
+  body('awardedToUserId').isMongoId().withMessage('Valid user ID required'),
+  body('comment').optional().trim().isLength({ min: 1, max: 500 }).withMessage('Comment must be 1-500 characters')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { bugId } = req.params;
+    const { points, awardedToUserId, comment } = req.body;
+
+    const bug = await Bug.findById(bugId).populate('reportedBy');
+    if (!bug) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bug not found'
+      });
+    }
+
+    // Check if user is the reporter of the bug
+    if (bug.reportedBy._id.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the bug reporter can award points'
+      });
+    }
+
+    // Check if bug is resolved
+    if (bug.status !== 'resolved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Points can only be awarded for resolved bugs'
+      });
+    }
+
+    // Check if points already awarded
+    if (bug.pointsAwarded > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Points have already been awarded for this bug'
+      });
+    }
+
+    const awardedToUser = await User.findById(awardedToUserId);
+    if (!awardedToUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User to award points not found'
+      });
+    }
+
+    // Award points to user
+    await awardedToUser.addPoints(points, 'bug_resolved');
+
+    // Update bug with points information
+    bug.pointsAwarded = points;
+    bug.awardedTo = awardedToUserId;
+    bug.pointsAwardedAt = new Date();
+
+    // Add comment if provided
+    if (comment) {
+      bug.comments.push({
+        author: req.user.id,
+        content: comment,
+        pointsAwarded: points,
+        isResolutionComment: true,
+        createdAt: new Date()
+      });
+    }
+
+    await bug.save();
+
+    res.json({
+      success: true,
+      message: 'Points awarded successfully',
+      data: {
+        pointsAwarded: points,
+        awardedTo: {
+          id: awardedToUser._id,
+          name: awardedToUser.name,
+          totalPoints: awardedToUser.points.total
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Award points error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Add comment to a bug
+// @route   POST /api/bugs/:bugId/comments
+// @access  Private
+router.post('/:bugId/comments', authenticate, [
+  param('bugId').isMongoId().withMessage('Invalid bug ID'),
+  body('content').trim().notEmpty().withMessage('Comment content required'),
+  body('githubProfile').optional().trim().isURL().withMessage('Valid GitHub profile URL required'),
+  body('githubPullRequest').optional().isObject().withMessage('GitHub PR must be an object')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { bugId } = req.params;
+    const { content, githubProfile, githubPullRequest } = req.body;
+
+    const bug = await Bug.findById(bugId);
+    if (!bug) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bug not found'
+      });
+    }
+
+    const newComment = {
+      author: req.user.id,
+      content,
+      githubProfile,
+      githubPullRequest,
+      createdAt: new Date()
+    };
+
+    bug.comments.push(newComment);
+    await bug.save();
+
+    // Populate the new comment
+    await bug.populate('comments.author', 'name email avatar githubProfile');
+
+    const addedComment = bug.comments[bug.comments.length - 1];
+
+    res.json({
+      success: true,
+      message: 'Comment added successfully',
+      data: {
+        comment: addedComment
+      }
+    });
+
+  } catch (error) {
+    console.error('Add comment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
     });
   }
 });

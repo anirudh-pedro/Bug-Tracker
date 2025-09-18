@@ -173,9 +173,8 @@ const GetStartedScreen = ({ navigation, route }) => {
         body: JSON.stringify({ username }),
       });
 
-      const data = await response.json();
-      setUsernameAvailable(data.available);
-      if (!data.available) {
+      setUsernameAvailable(response.available);
+      if (!response.available) {
         setUsernameError('Username is already taken');
       }
     } catch (error) {
@@ -277,11 +276,9 @@ const GetStartedScreen = ({ navigation, route }) => {
         }
       });
 
-      console.log('🔍 Auth test response status:', authTestResponse.status);
-      const authTestData = await authTestResponse.json();
-      console.log('🔍 Auth test response:', authTestData);
+      console.log('🔍 Auth test response:', authTestResponse);
 
-      if (!authTestResponse.ok) {
+      if (!authTestResponse.success) {
         console.error('❌ Authentication test failed');
         Alert.alert('Authentication Error', 'Your session has expired. Please sign in again.');
         
@@ -330,15 +327,13 @@ const GetStartedScreen = ({ navigation, route }) => {
         }),
       });
 
-      console.log('📡 Response status:', response.status);
-      const data = await response.json();
-      console.log('📡 Onboarding response:', data);
+      console.log('📡 Onboarding response:', response);
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to save user data');
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to save user data');
       }
 
-      console.log('✅ User onboarding completed:', data);
+      console.log('✅ User onboarding completed:', response);
 
       // Save user data locally as well
       const userData = {

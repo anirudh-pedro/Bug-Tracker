@@ -126,6 +126,69 @@ const userSchema = new mongoose.Schema({
       type: String,
       default: 'en'
     }
+  },
+  
+  // GitHub Integration
+  githubProfile: {
+    username: String,
+    url: String,
+    isVerified: {
+      type: Boolean,
+      default: false
+    },
+    verifiedAt: Date
+  },
+  
+  // Points and Achievements System
+  points: {
+    total: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    earned: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    spent: {
+      type: Number,
+      default: 0,
+      min: 0
+    }
+  },
+  achievements: [{
+    type: {
+      type: String,
+      enum: ['bug_reporter', 'bug_solver', 'contributor', 'reviewer', 'mentor']
+    },
+    level: {
+      type: Number,
+      min: 1,
+      max: 10
+    },
+    earnedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  statistics: {
+    bugsReported: {
+      type: Number,
+      default: 0
+    },
+    bugsResolved: {
+      type: Number,
+      default: 0
+    },
+    pullRequestsSubmitted: {
+      type: Number,
+      default: 0
+    },
+    pullRequestsMerged: {
+      type: Number,
+      default: 0
+    }
   }
 }, {
   timestamps: true,
@@ -168,6 +231,38 @@ userSchema.methods.getAssignedBugs = function() {
     assignedTo: this._id,
     status: { $nin: ['closed', 'resolved'] }
   });
+};
+
+// Points management methods
+userSchema.methods.addPoints = function(amount, source = 'general') {
+  this.points.earned += amount;
+  this.points.total = this.points.earned - this.points.spent;
+  
+  // Track statistics based on source
+  if (source === 'bug_resolved') {
+    this.statistics.bugsResolved += 1;
+  } else if (source === 'pr_merged') {
+    this.statistics.pullRequestsMerged += 1;
+  }
+  
+  return this.save();
+};
+
+userSchema.methods.spendPoints = function(amount) {
+  if (this.points.total < amount) {
+    throw new Error('Insufficient points');
+  }
+  this.points.spent += amount;
+  this.points.total = this.points.earned - this.points.spent;
+  return this.save();
+};
+
+userSchema.methods.verifyGithubProfile = function(githubUsername, githubUrl) {
+  this.githubProfile.username = githubUsername;
+  this.githubProfile.url = githubUrl;
+  this.githubProfile.isVerified = true;
+  this.githubProfile.verifiedAt = new Date();
+  return this.save();
 };
 
 module.exports = mongoose.model('User', userSchema);

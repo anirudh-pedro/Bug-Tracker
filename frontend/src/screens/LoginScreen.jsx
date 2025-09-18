@@ -105,9 +105,11 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (retryCount = 0) => {
     try {
       setLoading(true);
+      
+      console.log(`🔄 Starting Google Sign-In attempt ${retryCount + 1}/3`);
 
       // Clear any existing Google Sign-In session to force account picker
       try {
@@ -147,39 +149,37 @@ const LoginScreen = ({ navigation }) => {
         body: JSON.stringify({ idToken }),
       });
 
-      console.log('📡 Backend response status:', response.status);
-      const data = await response.json();
-      console.log('📡 Backend response data:', data);
+      console.log('📡 Backend response:', response);
 
-      if (data.success) {
+      if (response.success) {
         console.log('✅ Backend authentication successful');
-        console.log('🔍 User needs onboarding:', data.requiresOnboarding);
-        console.log('🔍 Is new user:', data.isNewUser);
+        console.log('🔍 User needs onboarding:', response.requiresOnboarding);
+        console.log('🔍 Is new user:', response.isNewUser);
         
         // Clear any existing token first to avoid conflicts
         await AsyncStorage.removeItem('userToken');
         console.log('🧹 Cleared old token from AsyncStorage');
         
         // Store new token in AsyncStorage for future use
-        if (data.token) {
-          await AsyncStorage.setItem('userToken', data.token);
+        if (response.token) {
+          await AsyncStorage.setItem('userToken', response.token);
           console.log('💾 New token stored in AsyncStorage');
-          console.log('🎫 New token preview:', data.token.substring(0, 30) + '...');
+          console.log('🎫 New token preview:', response.token.substring(0, 30) + '...');
         }
 
         // Store user data in AsyncStorage with both Firebase UID and backend user ID
-        if (data.user) {
+        if (response.user) {
           const userData = {
             uid: userCredential.user.uid, // Firebase UID
-            id: data.user.id, // Backend user ID
-            username: data.user.username,
-            name: data.user.name,
-            email: data.user.email,
-            avatar: data.user.avatar,
-            industry: data.user.industry,
-            phoneNumber: data.user.phoneNumber,
-            role: data.user.role,
-            onboardingCompleted: data.user.hasCompletedOnboarding
+            id: response.user.id, // Backend user ID
+            username: response.user.username,
+            name: response.user.name,
+            email: response.user.email,
+            avatar: response.user.avatar,
+            industry: response.user.industry,
+            phoneNumber: response.user.phoneNumber,
+            role: response.user.role,
+            onboardingCompleted: response.user.hasCompletedOnboarding
           };
           
           await AsyncStorage.setItem(`user_data_${userCredential.user.uid}`, JSON.stringify(userData));
@@ -190,14 +190,58 @@ const LoginScreen = ({ navigation }) => {
         console.log('✅ Authentication successful - App.jsx will handle navigation');
         
       } else {
-        console.error('❌ Backend authentication failed:', data.message);
-        Alert.alert('Authentication Error', data.message || 'Failed to authenticate with server');
+        console.error('❌ Backend authentication failed:', response.message);
+        Alert.alert('Authentication Error', response.message || 'Failed to authenticate with server');
       }
       
     } catch (error) {
       console.error('❌ Google Sign-In Error:', error);
       
-      if (error.code === 'auth/account-exists-with-different-credential') {
+      // Check if this is a network error and we should retry
+      const isNetworkError = error.name === 'AbortError' || 
+                           error.message?.includes('timed out') ||
+                           error.message?.includes('Network request failed') ||
+                           error.message?.includes('ECONNRESET') ||
+                           error.message?.includes('timeout');
+      
+      if (isNetworkError && retryCount < 2) {
+        console.log(`🔄 Network error detected, retrying (${retryCount + 1}/2)...`);
+        setLoading(false);
+        
+        // Wait 2 seconds before retrying
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return signInWithGoogle(retryCount + 1);
+      }
+      
+      // Handle specific error types
+      if (error.name === 'AbortError') {
+        Alert.alert(
+          'Connection Timeout',
+          'The sign-in request timed out. Please check your internet connection and try again.',
+          [
+            { text: 'Retry', onPress: () => signInWithGoogle() },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+      } else if (error.message && error.message.includes('timed out')) {
+        Alert.alert(
+          'Connection Timeout',
+          'The request took too long to complete. Please check your internet connection and try again.',
+          [
+            { text: 'Retry', onPress: () => signInWithGoogle() },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+      } else if (error.message && error.message.includes('Network request failed')) {
+        Alert.alert(
+          'Network Error',
+          'Unable to connect to the server. Please check your internet connection and try again.',
+          [
+            { text: 'Retry', onPress: () => signInWithGoogle() },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
         Alert.alert(
           'Account Exists',
           'An account already exists with the same email address but different sign-in credentials.'

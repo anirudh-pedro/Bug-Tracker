@@ -14,6 +14,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
+import { apiRequest } from '../utils/networkUtils';
 
 const ProfileSettingsScreen = ({ navigation }) => {
   const user = auth().currentUser;
@@ -112,21 +113,14 @@ const ProfileSettingsScreen = ({ navigation }) => {
     
     setCheckingUsername(true);
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch('http://172.16.8.229:5000/api/users/check-username', {
+      const response = await apiRequest('/api/users/check-username', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ username: usernameToCheck })
       });
-
-      const data = await response.json();
       
-      if (response.ok) {
-        setUsernameAvailable(data.available);
-        if (!data.available) {
+      if (response.success) {
+        setUsernameAvailable(response.data.available);
+        if (!response.data.available) {
           setUsernameError('Username is already taken');
         }
       } else {
@@ -162,13 +156,8 @@ const ProfileSettingsScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch('http://172.16.8.229:5000/api/users/update-profile', {
+      const response = await apiRequest('/api/users/update-profile', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({
           username: username.trim(),
           name: name.trim(),
@@ -177,21 +166,19 @@ const ProfileSettingsScreen = ({ navigation }) => {
         })
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (response.success) {
         // Update local storage
         const updatedUserData = {
           uid: user.uid,
-          id: data.user.id,
-          username: data.user.username,
-          name: data.user.name,
-          email: data.user.email,
-          avatar: data.user.avatar,
-          industry: data.user.industry,
-          phoneNumber: data.user.phoneNumber,
-          role: data.user.role,
-          onboardingCompleted: data.user.onboardingCompleted
+          id: response.data.user.id,
+          username: response.data.user.username,
+          name: response.data.user.name,
+          email: response.data.user.email,
+          avatar: response.data.user.avatar,
+          industry: response.data.user.industry,
+          phoneNumber: response.data.user.phoneNumber,
+          role: response.data.user.role,
+          onboardingCompleted: response.data.user.onboardingCompleted
         };
         
         await AsyncStorage.setItem(`user_data_${user.uid}`, JSON.stringify(updatedUserData));
@@ -207,7 +194,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
           ]
         );
       } else {
-        Alert.alert('Error', data.message || 'Failed to update profile');
+        Alert.alert('Error', response.message || 'Failed to update profile');
       }
     } catch (error) {
       console.error('Error updating profile:', error);

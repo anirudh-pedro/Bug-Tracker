@@ -9,10 +9,13 @@ import {
   Alert,
   Modal,
   Dimensions,
-  Image
+  Image,
+  ActivityIndicator
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { apiRequest } from '../utils/networkUtils';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -30,18 +33,48 @@ const CreateBugReportScreen = ({navigation}) => {
   const [stepsToReproduce, setStepsToReproduce] = useState('');
   const [repositoryUrl, setRepositoryUrl] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
   const [showAttachmentModal, setShowAttachmentModal] = useState(false);
   const [expectedBehavior, setExpectedBehavior] = useState('');
   const [actualBehavior, setActualBehavior] = useState('');
   const [environment, setEnvironment] = useState('');
+  
+  // Projects state - fetched from API
+  const [projects, setProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
 
-  // Sample projects - in real app, this would come from your data source
-  const projects = [
-    { id: 1, name: 'Bug Tracker Mobile App', status: 'Active', repo: 'https://github.com/user/bug-tracker' },
-    { id: 2, name: 'E-commerce Platform', status: 'Active', repo: 'https://github.com/user/ecommerce' },
-    { id: 3, name: 'Social Media Dashboard', status: 'Active', repo: 'https://gitlab.com/user/social-dashboard' },
-    { id: 4, name: 'Data Analytics Dashboard', status: 'On Hold', repo: '' },
-  ];
+  // Load user's projects on component mount
+  useEffect(() => {
+    loadUserProjects();
+  }, []);
+
+  const loadUserProjects = async () => {
+    try {
+      setLoadingProjects(true);
+      console.log('🔄 Loading user projects...');
+      
+      const response = await apiRequest('/api/projects', {
+        method: 'GET'
+      });
+
+      console.log('📋 User projects API response:', response);
+
+      if (response.success) {
+        const projectsData = response.data?.projects || [];
+        console.log('✅ User projects loaded:', projectsData.length, 'projects');
+        setProjects(projectsData);
+      } else {
+        const errorMsg = response.message || response.error || 'Failed to load projects';
+        console.error('❌ User projects API error:', errorMsg);
+        setProjects([]);
+      }
+    } catch (error) {
+      console.error('💥 Error loading user projects:', error);
+      setProjects([]);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
 
   const priorities = ['Low', 'Medium', 'High', 'Critical'];
   const severities = ['Minor', 'Medium', 'Major', 'Critical'];
@@ -74,7 +107,14 @@ const CreateBugReportScreen = ({navigation}) => {
     return githubPattern.test(url) || gitlabPattern.test(url);
   };
 
-  const handleSubmitBug = () => {
+  // Helper function to get selected project name
+  const getSelectedProjectName = () => {
+    if (!selectedProject) return 'Select a project';
+    const project = projects.find(p => p._id === selectedProject);
+    return project ? project.name : 'Select a project';
+  };
+
+  const handleSubmitBug = async () => {
     if (!bugTitle.trim()) {
       Alert.alert('Error', 'Please enter a bug title');
       return;
@@ -96,53 +136,69 @@ const CreateBugReportScreen = ({navigation}) => {
       return;
     }
 
-    // Create bug report object
-    const bugReport = {
-      id: Date.now(),
-      title: bugTitle.trim(),
-      description: bugDescription.trim(),
-      stepsToReproduce: stepsToReproduce.trim(),
-      expectedBehavior: expectedBehavior.trim(),
-      actualBehavior: actualBehavior.trim(),
-      environment: environment.trim(),
-      project: selectedProject,
-      priority: selectedPriority,
-      severity: selectedSeverity,
-      category: selectedCategory,
-      repositoryUrl: repositoryUrl.trim(),
-      attachments: attachedFiles,
-      status: 'Open',
-      reportedBy: 'Current User', // In real app, get from auth
-      reportedAt: new Date().toISOString(),
-      points: 0,
-      assignedTo: null,
-      comments: [],
-      tags: []
-    };
+    setSubmitting(true);
 
-    // Here you would typically send the data to your backend
-    console.log('Submitting bug report:', bugReport);
-    
-    Alert.alert(
-      'Success', 
-      'Bug report submitted successfully!\n\nYour bug is now visible in the global feed and available for community collaboration.',
-      [
-        {
-          text: 'View Bugs',
-          onPress: () => {
-            resetForm();
-            navigation.navigate('Bugs');
-          }
-        },
-        {
-          text: 'OK',
-          onPress: () => {
-            resetForm();
-            navigation.navigate('Home');
-          }
-        }
-      ]
-    );
+    try {
+      // Create bug report object to match backend expectations
+      const bugReport = {
+        title: bugTitle.trim(),
+        description: bugDescription.trim(),
+        priority: selectedPriority.toLowerCase(),
+        project: selectedProject, // Send project ID
+        stepsToReproduce: stepsToReproduce.trim(),
+        expectedBehavior: expectedBehavior.trim(),
+        actualBehavior: actualBehavior.trim(),
+        environment: environment.trim(),
+        category: selectedCategory,
+        repositoryUrl: repositoryUrl.trim(),
+        // Enhanced fields for GitHub integration
+        githubRepo: repositoryUrl.trim() ? {
+          url: repositoryUrl.trim(),
+          name: repositoryUrl.trim().split('/').slice(-1)[0] || '',
+          owner: repositoryUrl.trim().split('/').slice(-2, -1)[0] || ''
+        } : null,
+        bountyPoints: 10, // Default bounty points
+        tags: [selectedCategory, selectedPriority]
+      };
+
+      const response = await apiRequest('/api/bugs', {
+        method: 'POST',
+        data: bugReport
+      });
+
+      if (response.success) {
+        Alert.alert(
+          'Success', 
+          'Bug report submitted successfully!\n\nYour bug is now visible in the bug report page and available for community collaboration.',
+          [
+            {
+              text: 'View Bugs',
+              onPress: () => {
+                resetForm();
+                navigation.navigate('Bugs');
+              }
+            },
+            {
+              text: 'OK',
+              onPress: () => {
+                resetForm();
+                navigation.navigate('Home');
+              }
+            }
+          ]
+        );
+      } else {
+        throw new Error(response.message || 'Failed to submit bug report');
+      }
+    } catch (error) {
+      console.error('Error submitting bug report:', error);
+      Alert.alert(
+        'Error', 
+        'Failed to submit bug report. Please check your connection and try again.\n\n' + (error.message || 'Unknown error')
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -223,7 +279,7 @@ const CreateBugReportScreen = ({navigation}) => {
                 onPress={() => setShowProjectDropdown(true)}
               >
                 <Text style={[styles.dropdownText, !selectedProject && styles.placeholder]}>
-                  {selectedProject || 'Select a project'}
+                  {getSelectedProjectName()}
                 </Text>
                 <Icon name="arrow-drop-down" size={24} color="#888888" />
               </TouchableOpacity>
@@ -399,9 +455,19 @@ const CreateBugReportScreen = ({navigation}) => {
             </View>
 
             {/* Submit Button */}
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmitBug}>
-              <Icon name="bug-report" size={24} color="#ffffff" />
-              <Text style={styles.submitButtonText}>Submit Bug Report</Text>
+            <TouchableOpacity 
+              style={[styles.submitButton, submitting && styles.submitButtonDisabled]} 
+              onPress={handleSubmitBug}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Icon name="bug-report" size={24} color="#ffffff" />
+              )}
+              <Text style={styles.submitButtonText}>
+                {submitting ? 'Submitting...' : 'Submit Bug Report'}
+              </Text>
             </TouchableOpacity>
 
           </View>
@@ -421,23 +487,35 @@ const CreateBugReportScreen = ({navigation}) => {
           >
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Select Project</Text>
-              {projects.map((project) => (
-                <TouchableOpacity
-                  key={project.id}
-                  style={styles.modalItem}
-                  onPress={() => {
-                    setSelectedProject(project.name);
-                    setShowProjectDropdown(false);
-                  }}
-                >
-                  <Text style={styles.modalItemText}>{project.name}</Text>
-                  <Text style={[styles.modalItemStatus, {
-                    color: project.status === 'Active' ? '#10b981' : '#888888'
-                  }]}>
-                    {project.status}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {loadingProjects ? (
+                <View style={styles.modalLoadingContainer}>
+                  <ActivityIndicator size="small" color="#ff9500" />
+                  <Text style={styles.modalLoadingText}>Loading projects...</Text>
+                </View>
+              ) : projects.length === 0 ? (
+                <View style={styles.modalEmptyContainer}>
+                  <Text style={styles.modalEmptyText}>No projects found</Text>
+                  <Text style={styles.modalEmptySubtext}>Create a project first from the Projects tab</Text>
+                </View>
+              ) : (
+                projects.map((project) => (
+                  <TouchableOpacity
+                    key={project._id}
+                    style={styles.modalItem}
+                    onPress={() => {
+                      setSelectedProject(project._id); // Store project ID instead of name
+                      setShowProjectDropdown(false);
+                    }}
+                  >
+                    <Text style={styles.modalItemText}>{project.name}</Text>
+                    <Text style={[styles.modalItemStatus, {
+                      color: project.status === 'active' ? '#10b981' : '#888888'
+                    }]}>
+                      {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
           </TouchableOpacity>
         </Modal>
@@ -707,6 +785,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
   },
+  submitButtonDisabled: {
+    backgroundColor: '#666666',
+    shadowColor: '#666666',
+  },
   submitButtonText: {
     fontSize: 18,
     fontWeight: '700',
@@ -850,6 +932,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888888',
     marginTop: 2,
+  },
+  modalLoadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  modalLoadingText: {
+    fontSize: 14,
+    color: '#666666',
+    marginTop: 12,
+  },
+  modalEmptyContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  modalEmptyText: {
+    fontSize: 16,
+    color: '#ffffff',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  modalEmptySubtext: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
   },
 });
 

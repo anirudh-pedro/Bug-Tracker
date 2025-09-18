@@ -57,6 +57,7 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/projects', require('./routes/projects'));
+app.use('/api/github', require('./routes/github'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -80,7 +81,8 @@ app.get('/', (req, res) => {
       users: '/api/users',
       projects: '/api/projects',
       bugs: '/api/bugs',
-      dashboard: '/api/dashboard'
+      dashboard: '/api/dashboard',
+      github: '/api/github'
     }
   });
 });

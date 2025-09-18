@@ -15,9 +15,10 @@ import GetStartedScreen from './src/screens/GetStartedScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProjectsScreen from './src/screens/ProjectsScreen';
+import CreateProjectScreen from './src/screens/CreateProjectScreen';
 import CreateProjectTab from './src/screens/CreateProjectTab';
-import BugsScreen from './src/screens/BugsScreen';
-import BugDetailScreen from './src/screens/BugDetailScreen';
+import EnhancedBugsScreen from './src/screens/EnhancedBugsScreen';
+import EnhancedBugDetailScreen from './src/screens/EnhancedBugDetailScreen';
 import PointsScreen from './src/screens/PointsScreen';
 import ProfileSettingsScreen from './src/screens/ProfileSettingsScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
@@ -102,7 +103,7 @@ const TabNavigator = ({ route }) => {
       />
       <Tab.Screen 
         name="Bugs" 
-        component={BugsScreen}
+        component={EnhancedBugsScreen}
         options={{
           tabBarLabel: () => null,
           tabBarBadge: 3,
@@ -139,7 +140,7 @@ const TabNavigator = ({ route }) => {
         }}
       />
       <Tab.Screen 
-        name="CreateProject" 
+        name="ReportBug" 
         component={CreateProjectTab}
         options={{
           tabBarLabel: () => null,
@@ -305,10 +306,10 @@ const App = () => {
         },
       });
 
-      console.log('📡 Database check response status:', response.status);
+      console.log('📡 Database check response:', response);
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.success) {
+        const data = response;
         console.log('✅ Database response received:', data);
         console.log('📊 DETAILED BACKEND RESPONSE:');
         console.log('  🔍 success:', data.success);
@@ -343,12 +344,10 @@ const App = () => {
           console.log('🆕 NEW USER DETECTED - Email has NO username in DB → REDIRECT TO GET STARTED');
         }
       } else {
-        console.log('❌ Database check failed with status:', response.status);
+        console.log('❌ Database check failed:', response.message || 'Unknown error');
+        console.log('❌ Error details:', response);
         
-        const errorText = await response.text();
-        console.log('❌ Error details:', errorText);
-        
-        if (response.status === 401) {
+        if (response.authError) {
           console.log('🔄 Invalid authentication token - signing out user');
           await auth().signOut();
         } else {
@@ -406,7 +405,8 @@ const App = () => {
       return (
         <Stack.Navigator screenOptions={{headerShown: false}}>
           <Stack.Screen name="MainApp" component={TabNavigator} />
-          <Stack.Screen name="BugDetail" component={BugDetailScreen} />
+          <Stack.Screen name="BugDetail" component={EnhancedBugDetailScreen} />
+          <Stack.Screen name="CreateProject" component={CreateProjectScreen} />
           <Stack.Screen name="Points" component={PointsScreen} />
           <Stack.Screen name="Dashboard" component={DashboardScreen} />
           <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />

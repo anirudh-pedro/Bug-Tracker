@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
+import { apiRequest } from '../utils/networkUtils';
 
 const { width, height } = Dimensions.get('window');
 
@@ -101,16 +102,8 @@ const OnboardingScreen = ({ route, navigation }) => {
 
     setCheckingUsername(true);
     try {
-      const response = await fetch(`http://172.16.8.229:5000/api/users/check-username/${username}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-      setUsernameAvailable(data.available);
+      const response = await apiRequest(`/api/users/check-username/${username}`);
+      setUsernameAvailable(response.data?.available);
     } catch (error) {
       console.error('Username check error:', error);
       setUsernameAvailable(null);
@@ -185,20 +178,14 @@ const OnboardingScreen = ({ route, navigation }) => {
     
     setLoading(true);
     try {
-      const response = await fetch('http://172.16.8.229:5000/api/users/complete-onboarding', {
+      const response = await apiRequest('/api/users/complete-onboarding', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(formData),
       });
 
-      console.log('📡 Response status:', response.status);
-      const data = await response.json();
-      console.log('📡 Response data:', data);
+      console.log('📡 Response data:', response);
 
-      if (data.success) {
+      if (response.success) {
         console.log('✅ Onboarding completed successfully!');
         Alert.alert(
           'Welcome!',
@@ -214,8 +201,8 @@ const OnboardingScreen = ({ route, navigation }) => {
           ]
         );
       } else {
-        console.error('❌ Onboarding failed:', data.message);
-        Alert.alert('Error', data.message || 'Failed to complete onboarding');
+        console.error('❌ Onboarding failed:', response.message);
+        Alert.alert('Error', response.message || 'Failed to complete onboarding');
       }
     } catch (error) {
       console.error('❌ Onboarding error:', error);
