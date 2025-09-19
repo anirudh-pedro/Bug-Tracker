@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import LinearGradient from 'react-native-linear-gradient';
 import { apiRequest } from '../utils/networkUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -237,8 +238,11 @@ const CreateBugReportScreen = ({navigation}) => {
   };
 
   return (
-    <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#1a1a1a', '#000000']}
+        style={styles.gradient}
+      >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
@@ -661,8 +665,8 @@ const CreateBugReportScreen = ({navigation}) => {
           </View>
         </Modal>
 
-      </SafeAreaView>
-    </View>
+      </LinearGradient>
+    </SafeAreaView>
   );
 };
 
@@ -671,7 +675,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  safeArea: {
+  gradient: {
     flex: 1,
   },
   header: {
@@ -681,19 +685,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#222222',
+    borderBottomColor: '#333333',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#111111',
+    backgroundColor: '#333333',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#ffffff',
   },
   headerRight: {
@@ -719,7 +723,7 @@ const styles = StyleSheet.create({
     color: '#ff9500',
   },
   input: {
-    backgroundColor: '#111111',
+    backgroundColor: '#1a1a1a',
     borderWidth: 1,
     borderColor: '#333333',
     borderRadius: 12,
@@ -731,9 +735,10 @@ const styles = StyleSheet.create({
   },
   textArea: {
     minHeight: 100,
+    textAlignVertical: 'top',
   },
   dropdown: {
-    backgroundColor: '#111111',
+    backgroundColor: '#1a1a1a',
     borderWidth: 1,
     borderColor: '#333333',
     borderRadius: 12,
@@ -770,8 +775,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   submitButton: {
-    backgroundColor: '#ff9500',
-    borderRadius: 16,
+    backgroundColor: '#ff6b6b',
+    borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
     flexDirection: 'row',
@@ -779,19 +784,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
     marginTop: 20,
-    elevation: 3,
-    shadowColor: '#ff9500',
-    shadowOffset: { width: 0, height: 2 },
+    elevation: 5,
+    shadowColor: '#ff6b6b',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowRadius: 8,
   },
   submitButtonDisabled: {
     backgroundColor: '#666666',
     shadowColor: '#666666',
+    elevation: 2,
+    shadowOpacity: 0.1,
   },
   submitButtonText: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#ffffff',
   },
   modalOverlay: {

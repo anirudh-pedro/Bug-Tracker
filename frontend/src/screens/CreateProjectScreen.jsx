@@ -71,7 +71,10 @@ const CreateProjectScreen = ({ navigation }) => {
           [
             {
               text: 'View Projects',
-              onPress: () => navigation.navigate('Projects')
+              onPress: () => {
+                navigation.goBack(); // Go back to main app
+                // The main app will show the Projects tab
+              }
             }
           ]
         );

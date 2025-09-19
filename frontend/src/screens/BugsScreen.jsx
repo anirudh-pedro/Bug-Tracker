@@ -13,6 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const {width: screenWidth} = Dimensions.get('window');
@@ -398,74 +399,80 @@ const BugsScreen = ({navigation}) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Bug Reports</Text>
-        <Text style={styles.headerSubtitle}>{filteredBugs.length} bugs found</Text>
-      </View>
-
-      {/* Search and Filter */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBox}>
-          <Icon name="search" size={20} color="#999999" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search bugs, tags, or descriptions..."
-            placeholderTextColor="#999999"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+    <LinearGradient
+      colors={['#0a0a0a', '#1a1a1a', '#0a0a0a']}
+      style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Bug Reports</Text>
+          <Text style={styles.headerSubtitle}>{filteredBugs.length} bugs found</Text>
         </View>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowFilterModal(true)}>
-          <Icon name="filter-list" size={20} color="#ffffff" />
-        </TouchableOpacity>
-      </View>
 
-      {/* Bugs List */}
-      <FlatList
-        data={filteredBugs}
-        renderItem={renderBugItem}
-        keyExtractor={(item) => item.id.toString()}
-        style={styles.bugsList}
-        contentContainerStyle={styles.bugsListContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#ff9500']}
-            tintColor="#ff9500"
-          />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Icon name="bug-report" size={48} color="#333333" />
-            <Text style={styles.emptyStateText}>No bugs found</Text>
-            <Text style={styles.emptyStateSubtext}>
-              Try adjusting your search or filter criteria
-            </Text>
+        {/* Search and Filter */}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBox}>
+            <Icon name="search" size={20} color="#999999" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search bugs, tags, or descriptions..."
+              placeholderTextColor="#999999"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
           </View>
-        }
-      />
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setShowFilterModal(true)}>
+            <Icon name="filter-list" size={20} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
 
-      <FilterModal />
-    </SafeAreaView>
+        {/* Bugs List */}
+        <FlatList
+          data={filteredBugs}
+          renderItem={renderBugItem}
+          keyExtractor={(item) => item.id.toString()}
+          style={styles.bugsList}
+          contentContainerStyle={styles.bugsListContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#ff9500']}
+              tintColor="#ff9500"
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Icon name="bug-report" size={48} color="#666666" />
+              <Text style={styles.emptyStateText}>No bugs found</Text>
+              <Text style={styles.emptyStateSubtext}>
+                Be the first to report a bug
+              </Text>
+            </View>
+          }
+        />
+
+        <FilterModal />
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+  },
+  safeArea: {
+    flex: 1,
   },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#222222',
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   headerTitle: {
     fontSize: 24,
@@ -487,11 +494,13 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111111',
+    backgroundColor: 'rgba(17, 17, 17, 0.8)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   searchInput: {
     flex: 1,
@@ -513,11 +522,19 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   bugCard: {
-    backgroundColor: '#111111',
+    backgroundColor: 'rgba(17, 17, 17, 0.8)',
     borderRadius: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: '#333333',
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   bugContent: {
     padding: 16,
@@ -676,10 +693,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   filterModal: {
-    backgroundColor: '#111111',
+    backgroundColor: 'rgba(17, 17, 17, 0.95)',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   modalHeader: {
     flexDirection: 'row',
