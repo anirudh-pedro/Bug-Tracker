@@ -524,17 +524,18 @@ const EnhancedBugsScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#000000',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#000000',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#666',
+    color: '#ffffff',
   },
   header: {
     flexDirection: 'row',
@@ -542,14 +543,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
+    borderBottomColor: '#333333',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#2E3A59',
+    color: '#ffffff',
   },
   headerActions: {
     flexDirection: 'row',
@@ -575,31 +576,33 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
+    borderBottomColor: '#333333',
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#2a2a2a',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#444444',
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
     marginLeft: 8,
-    color: '#333',
+    color: '#ffffff',
   },
   statsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
+    borderBottomColor: '#333333',
   },
   statCard: {
     flex: 1,
@@ -608,11 +611,11 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#2E3A59',
+    color: '#ffffff',
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
+    color: '#888888',
     marginTop: 2,
   },
   activeFilters: {
@@ -620,9 +623,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
+    borderBottomColor: '#333333',
   },
   activeFiltersRow: {
     flexDirection: 'row',
@@ -631,11 +634,13 @@ const styles = StyleSheet.create({
   activeFilter: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#2a2a2a',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#444444',
   },
   activeFilterText: {
     fontSize: 12,
@@ -653,17 +658,20 @@ const styles = StyleSheet.create({
   bugList: {
     padding: 16,
     paddingBottom: 80, // Space for FAB
+    backgroundColor: '#000000',
   },
   bugCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   bugHeader: {
     flexDirection: 'row',
@@ -677,12 +685,12 @@ const styles = StyleSheet.create({
   bugId: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: '#888888',
     marginBottom: 2,
   },
   timeAgo: {
     fontSize: 12,
-    color: '#999',
+    color: '#666666',
   },
   badges: {
     flexDirection: 'row',
@@ -707,13 +715,13 @@ const styles = StyleSheet.create({
   bugTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2E3A59',
+    color: '#ffffff',
     marginBottom: 8,
     lineHeight: 22,
   },
   bugDescription: {
     fontSize: 14,
-    color: '#666',
+    color: '#cccccc',
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -743,7 +751,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 14,
-    color: '#333',
+    color: '#ffffff',
     fontWeight: '500',
   },
   bugStats: {
@@ -757,17 +765,19 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 12,
-    color: '#666',
+    color: '#888888',
     marginLeft: 4,
   },
   projectTag: {
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: '#E8F5E8',
+    backgroundColor: '#2a2a2a',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#444444',
   },
   projectTagText: {
     fontSize: 10,
@@ -777,17 +787,18 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 60,
+    backgroundColor: '#000000',
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#666',
+    color: '#ffffff',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#999',
+    color: '#888888',
     textAlign: 'center',
   },
   fab: {
@@ -808,14 +819,16 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'flex-end',
   },
   filterModalContent: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -824,12 +837,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
+    borderBottomColor: '#333333',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2E3A59',
+    color: '#ffffff',
   },
   closeButton: {
     padding: 4,
@@ -837,6 +850,7 @@ const styles = StyleSheet.create({
   filterOptions: {
     paddingHorizontal: 20,
     paddingVertical: 16,
+    backgroundColor: '#1a1a1a',
   },
   filterSection: {
     marginBottom: 24,
@@ -844,7 +858,7 @@ const styles = StyleSheet.create({
   filterSectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2E3A59',
+    color: '#ffffff',
     marginBottom: 12,
   },
   filterRow: {
@@ -855,8 +869,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E1E8ED',
+    borderColor: '#444444',
     marginRight: 8,
+    backgroundColor: '#2a2a2a',
   },
   filterChipSelected: {
     backgroundColor: '#3498DB',
@@ -864,7 +879,7 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     fontSize: 14,
-    color: '#666',
+    color: '#ffffff',
   },
   filterChipTextSelected: {
     color: '#FFF',
@@ -879,7 +894,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#E1E8ED',
+    backgroundColor: '#444444',
     padding: 2,
   },
   toggleActive: {
@@ -896,14 +911,15 @@ const styles = StyleSheet.create({
   },
   lastRefreshText: {
     fontSize: 12,
-    color: '#999',
+    color: '#888888',
   },
   filterModalActions: {
     flexDirection: 'row',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E1E8ED',
+    borderTopColor: '#333333',
+    backgroundColor: '#1a1a1a',
   },
   clearFiltersButton: {
     flex: 1,

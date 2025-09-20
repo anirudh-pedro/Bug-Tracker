@@ -109,13 +109,30 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 5000;
 const HOST = '0.0.0.0'; // Listen on all network interfaces
 
+// Get local network IP
+const os = require('os');
+const networkInterfaces = os.networkInterfaces();
+let networkIP = 'localhost';
+
+// Find the first non-internal IPv4 address
+for (const interfaceName of Object.keys(networkInterfaces)) {
+  const iface = networkInterfaces[interfaceName];
+  for (const config of iface) {
+    if (config.family === 'IPv4' && !config.internal) {
+      networkIP = config.address;
+      break;
+    }
+  }
+  if (networkIP !== 'localhost') break;
+}
+
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Local API URL: http://localhost:${PORT}`);
-  console.log(`📱 Network API URL: http://192.168.212.115:${PORT}`);
-  console.log(`🏥 Health check: http://192.168.212.115:${PORT}/api/health`);
-  console.log(`📋 Dashboard: http://192.168.212.115:${PORT}/api/dashboard`);
-  console.log(`🐛 Bugs API: http://192.168.212.115:${PORT}/api/bugs`);
+  console.log(`📱 Network API URL: http://${networkIP}:${PORT}`);
+  console.log(`🏥 Health check: http://${networkIP}:${PORT}/api/health`);
+  console.log(`📋 Dashboard: http://${networkIP}:${PORT}/api/dashboard`);
+  console.log(`🐛 Bugs API: http://${networkIP}:${PORT}/api/bugs`);
 });
 
 module.exports = app;

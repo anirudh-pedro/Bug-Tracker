@@ -2,6 +2,7 @@
 export const SCREENS = {
   LOGIN: 'Login',
   HOME: 'Home',
+  USER_PROFILE: 'UserProfile',
 };
 
 // App constants

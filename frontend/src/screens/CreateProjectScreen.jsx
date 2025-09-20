@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,26 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { apiRequest } from '../utils/networkUtils';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const CreateProjectScreen = ({ navigation }) => {
+const CreateProjectScreen = ({ navigation, route }) => {
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
   const [techStack, setTechStack] = useState('');
+  const [techStackList, setTechStackList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const techStackInputRef = useRef(null);
+  const insets = useSafeAreaInsets();
+  
+  // Get callback from route params
+  const onProjectCreated = route?.params?.onProjectCreated;
 
   const generateProjectKey = (name) => {
     // Generate a project key from the name
@@ -29,6 +39,27 @@ const CreateProjectScreen = ({ navigation }) => {
       .map(word => word.slice(0, 3))
       .join('')
       .slice(0, 10);
+  };
+
+  const addTechStack = () => {
+    if (techStack.trim() && !techStackList.includes(techStack.trim())) {
+      setTechStackList([...techStackList, techStack.trim()]);
+      setTechStack('');
+      // Keep the input focused to prevent keyboard dismissal
+      setTimeout(() => {
+        if (techStackInputRef.current) {
+          techStackInputRef.current.focus();
+        }
+      }, 50);
+    }
+  };
+
+  const removeTechStack = (indexToRemove) => {
+    setTechStackList(techStackList.filter((_, index) => index !== indexToRemove));
+  };
+
+  const handleTechStackSubmit = () => {
+    addTechStack();
   };
 
   const handleCreateProject = async () => {
@@ -43,8 +74,8 @@ const CreateProjectScreen = ({ navigation }) => {
       return;
     }
 
-    if (!techStack.trim()) {
-      Alert.alert('Required Field', 'Please enter the tech stack');
+    if (!techStackList.length) {
+      Alert.alert('Required Field', 'Please add at least one technology to the tech stack');
       return;
     }
 
@@ -58,13 +89,23 @@ const CreateProjectScreen = ({ navigation }) => {
           name: projectName.trim(),
           description: projectDescription.trim(),
           key: projectKey,
-          tags: techStack.split(',').map(tag => tag.trim()).filter(tag => tag),
+          tags: techStackList,
           category: 'web', // Default category
           priority: 'medium' // Default priority
         })
       });
 
       if (response.success) {
+        // Reset form
+        setProjectName('');
+        setProjectDescription('');
+        setTechStackList([]);
+        
+        // Call callback to refresh projects list if provided
+        if (onProjectCreated) {
+          onProjectCreated();
+        }
+        
         Alert.alert(
           'Success', 
           `Project "${projectName}" created successfully!`,
@@ -72,8 +113,8 @@ const CreateProjectScreen = ({ navigation }) => {
             {
               text: 'View Projects',
               onPress: () => {
-                navigation.goBack(); // Go back to main app
-                // The main app will show the Projects tab
+                navigation.goBack(); // Go back to Projects screen
+                // The useFocusEffect will automatically reload projects
               }
             }
           ]
@@ -91,13 +132,18 @@ const CreateProjectScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#1a1a1a', '#000000']}
-        style={styles.gradient}
+    <View style={styles.container}>
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        {/* Header */}
-        <View style={styles.header}>
+        <LinearGradient
+          colors={['#1a1a1a', '#000000']}
+          style={styles.gradient}
+        >
+          {/* Header */}
+          <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => navigation.goBack()}
@@ -108,7 +154,12 @@ const CreateProjectScreen = ({ navigation }) => {
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 80 }]}
+        >
           {/* Project Icon */}
           <View style={styles.iconContainer}>
             <LinearGradient
@@ -142,16 +193,51 @@ const CreateProjectScreen = ({ navigation }) => {
             {/* Tech Stack */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Tech Stack *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., React Native, Node.js, MongoDB"
-                placeholderTextColor="#666666"
-                value={techStack}
-                onChangeText={setTechStack}
-                multiline={true}
-                numberOfLines={2}
-              />
-              <Text style={styles.hint}>Separate technologies with commas</Text>
+              <View style={styles.techStackInputContainer}>
+                <TextInput
+                  ref={techStackInputRef}
+                  style={styles.techStackInput}
+                  placeholder="Add a technology (e.g., React Native)"
+                  placeholderTextColor="#666666"
+                  value={techStack}
+                  onChangeText={setTechStack}
+                  onSubmitEditing={handleTechStackSubmit}
+                  returnKeyType="done"
+                  blurOnSubmit={false}
+                />
+                <TouchableOpacity 
+                  style={styles.addButton}
+                  onPressIn={addTechStack}
+                  disabled={!techStack.trim()}
+                  activeOpacity={0.7}
+                >
+                  <Icon name="add" size={20} color={techStack.trim() ? "#ffffff" : "#666666"} />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Tech Stack List */}
+              {techStackList.length > 0 && (
+                <View style={styles.techStackList}>
+                  {techStackList.map((tech, index) => (
+                    <View key={index} style={styles.techStackItem}>
+                      <Text style={styles.techStackText}>{tech}</Text>
+                      <TouchableOpacity 
+                        style={styles.removeButton}
+                        onPress={() => removeTechStack(index)}
+                      >
+                        <Icon name="close" size={16} color="#ff6b6b" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+              
+              <Text style={styles.hint}>
+                {techStackList.length === 0 
+                  ? "Add technologies one by one" 
+                  : `${techStackList.length} technolog${techStackList.length === 1 ? 'y' : 'ies'} added`
+                }
+              </Text>
             </View>
 
             {/* Description */}
@@ -196,7 +282,8 @@ const CreateProjectScreen = ({ navigation }) => {
           </TouchableOpacity>
         </ScrollView>
       </LinearGradient>
-    </SafeAreaView>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -205,6 +292,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   gradient: {
     flex: 1,
   },
@@ -212,7 +302,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingBottom: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#333333',
   },
@@ -237,9 +327,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   iconContainer: {
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 40,
     marginBottom: 20,
   },
   iconGradient: {
@@ -306,7 +399,8 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   createButton: {
-    marginBottom: 30,
+    marginBottom: 20,
+    marginTop: 30,
     borderRadius: 12,
     overflow: 'hidden',
     elevation: 5,
@@ -331,6 +425,67 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  // Tech Stack Styles
+  techStackInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  techStackInput: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  addButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#333333',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#444444',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+  },
+  techStackList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+    gap: 8,
+  },
+  techStackItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2a2a2a',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#444444',
+  },
+  techStackText: {
+    fontSize: 14,
+    color: '#ffffff',
+    marginRight: 6,
+  },
+  removeButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#333333',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

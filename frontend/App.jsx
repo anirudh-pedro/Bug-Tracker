@@ -22,6 +22,7 @@ import EnhancedBugDetailScreen from './src/screens/EnhancedBugDetailScreen';
 import PointsScreen from './src/screens/PointsScreen';
 import ProfileSettingsScreen from './src/screens/ProfileSettingsScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+import UserProfileScreen from './src/screens/UserProfileScreen';
 
 // Import components
 import CustomTabBar from './src/components/CustomTabBar';
@@ -405,11 +406,12 @@ const App = () => {
       return (
         <Stack.Navigator screenOptions={{headerShown: false}}>
           <Stack.Screen name="MainApp" component={TabNavigator} />
-          <Stack.Screen name="BugDetail" component={EnhancedBugDetailScreen} />
+          <Stack.Screen name="EnhancedBugDetail" component={EnhancedBugDetailScreen} />
           <Stack.Screen name="CreateProject" component={CreateProjectScreen} />
           <Stack.Screen name="Points" component={PointsScreen} />
           <Stack.Screen name="Dashboard" component={DashboardScreen} />
           <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />
+          <Stack.Screen name="UserProfile" component={UserProfileScreen} />
           <Stack.Screen name="GetStarted" component={GetStartedScreen} />
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         </Stack.Navigator>

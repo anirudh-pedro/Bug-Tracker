@@ -14,6 +14,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { apiRequest } from '../utils/networkUtils';
+import { useFocusEffect } from '@react-navigation/native';
 
 const ProjectsScreen = ({navigation}) => {
   const [searchText, setSearchText] = useState('');
@@ -25,6 +26,13 @@ const ProjectsScreen = ({navigation}) => {
   useEffect(() => {
     loadProjects();
   }, []);
+
+  // Reload projects when screen comes into focus (e.g., after creating a new project)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadProjects();
+    }, [])
+  );
 
   useEffect(() => {
     filterProjects();
@@ -191,7 +199,9 @@ const ProjectsScreen = ({navigation}) => {
                   <Text style={styles.sectionTitle}>Your Projects</Text>
                   <TouchableOpacity 
                     style={styles.addButton}
-                    onPress={() => navigation.navigate('CreateProject')}
+                    onPress={() => navigation.navigate('CreateProject', { 
+                      onProjectCreated: loadProjects 
+                    })}
                   >
                     <Icon name="add" size={20} color="#ffffff" />
                     <Text style={styles.addButtonText}>New</Text>
@@ -213,7 +223,9 @@ const ProjectsScreen = ({navigation}) => {
                     {projects.length === 0 && (
                       <TouchableOpacity 
                         style={styles.createFirstButton}
-                        onPress={() => navigation.navigate('CreateProject')}
+                        onPress={() => navigation.navigate('CreateProject', { 
+                          onProjectCreated: loadProjects 
+                        })}
                       >
                         <Icon name="add" size={20} color="#ffffff" />
                         <Text style={styles.createFirstButtonText}>Create First Project</Text>

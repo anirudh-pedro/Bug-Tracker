@@ -33,8 +33,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
   const [showAwardPointsModal, setShowAwardPointsModal] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [showGithubLinkModal, setShowGithubLinkModal] = useState(false);
-  const [showForkModal, setShowForkModal] = useState(false);
-  const [showPRModal, setShowPRModal] = useState(false);
+  const [showCommentPointsModal, setShowCommentPointsModal] = useState(false);
   
   // Form states
   const [pointsToAward, setPointsToAward] = useState('');
@@ -42,11 +41,14 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
   const [newComment, setNewComment] = useState('');
   const [githubProfileUrl, setGithubProfileUrl] = useState('');
   const [githubRepoUrl, setGithubRepoUrl] = useState('');
-  const [forkUrl, setForkUrl] = useState('');
-  const [githubUsername, setGithubUsername] = useState('');
-  const [prUrl, setPrUrl] = useState('');
-  const [prTitle, setPrTitle] = useState('');
-  const [prNumber, setPrNumber] = useState('');
+  const [selectedComment, setSelectedComment] = useState(null);
+  const [commentPointsToAward, setCommentPointsToAward] = useState('');
+  const [commentAwardReason, setCommentAwardReason] = useState('');
+  
+  // Username suggestion states
+  const [userSuggestions, setUserSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
 
   useEffect(() => {
     loadBugDetails();
@@ -96,6 +98,55 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
     setRefreshing(false);
   };
 
+  const handleDeleteBug = () => {
+    Alert.alert(
+      'Delete Bug',
+      'Are you sure you want to delete this bug? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: deleteBug
+        }
+      ]
+    );
+  };
+
+  const deleteBug = async () => {
+    try {
+      const response = await apiRequest(`/api/bugs/${bugId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.success) {
+        Alert.alert('Success', 'Bug deleted successfully!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate back to the main app and then to the Bugs tab
+              navigation.navigate('MainApp', { screen: 'Bugs' });
+            }
+          }
+        ]);
+      } else {
+        Alert.alert('Error', response.message || 'Failed to delete bug');
+      }
+    } catch (error) {
+      console.error('Error deleting bug:', error);
+      Alert.alert('Error', 'Failed to delete bug');
+    }
+  };
+
+  const handleEditBug = () => {
+    // Navigate to edit bug screen (you might need to create this screen)
+    Alert.alert('Info', 'Edit bug functionality - to be implemented');
+    // navigation.navigate('EditBug', { bugId: bugId, bug: bug });
+  };
+
   const linkGithubRepo = async () => {
     try {
       if (!githubRepoUrl.trim()) {
@@ -137,69 +188,169 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
     }
   };
 
-  const recordFork = async () => {
+  // Function to fetch users for suggestions
+  const fetchUserSuggestions = async (query) => {
     try {
-      if (!forkUrl.trim() || !githubUsername.trim()) {
-        Alert.alert('Error', 'Please fill in all fields');
+      if (query.length < 2) {
+        setUserSuggestions([]);
         return;
       }
 
-      const response = await apiRequest(`/api/github/fork/${bugId}`, {
-        method: 'POST',
-        body: JSON.stringify({
-          githubUsername,
-          forkUrl
-        })
-      });
-
+      const response = await apiRequest(`/api/users/search?q=${encodeURIComponent(query)}`);
       if (response.success) {
-        Alert.alert('Success', 'Fork recorded successfully!');
-        setShowForkModal(false);
-        setForkUrl('');
-        setGithubUsername('');
-        handleRefresh();
-      } else {
-        Alert.alert('Error', response.message || 'Failed to record fork');
+        setUserSuggestions(response.data.users || []);
       }
-
     } catch (error) {
-      console.error('Error recording fork:', error);
-      Alert.alert('Error', 'Failed to record fork');
+      console.error('Error fetching user suggestions:', error);
     }
   };
 
-  const submitPullRequest = async () => {
-    try {
-      if (!prUrl.trim() || !prTitle.trim() || !prNumber.trim() || !githubUsername.trim()) {
-        Alert.alert('Error', 'Please fill in all fields');
-        return;
-      }
-
-      const response = await apiRequest(`/api/github/pull-request/${bugId}`, {
-        method: 'POST',
-        body: JSON.stringify({
-          prUrl,
-          title: prTitle,
-          githubUsername,
-          prNumber: parseInt(prNumber)
-        })
-      });
-
-      if (response.success) {
-        Alert.alert('Success', 'Pull request submitted successfully!');
-        setShowPRModal(false);
-        setPrUrl('');
-        setPrTitle('');
-        setPrNumber('');
-        setGithubUsername('');
-        handleRefresh();
+  // Handle text change in comment input with @ mention detection
+  const handleCommentTextChange = (text) => {
+    setNewComment(text);
+    
+    // Detect @ mentions
+    const lastAtIndex = text.lastIndexOf('@');
+    if (lastAtIndex !== -1) {
+      const afterAt = text.substring(lastAtIndex + 1);
+      const spaceIndex = afterAt.indexOf(' ');
+      const currentMention = spaceIndex === -1 ? afterAt : afterAt.substring(0, spaceIndex);
+      
+      if (currentMention.length >= 0 && currentMention.indexOf('\n') === -1) {
+        setMentionQuery(currentMention);
+        setShowSuggestions(true);
+        fetchUserSuggestions(currentMention);
       } else {
-        Alert.alert('Error', response.message || 'Failed to submit pull request');
+        setShowSuggestions(false);
+        setUserSuggestions([]);
+      }
+    } else {
+      setShowSuggestions(false);
+      setUserSuggestions([]);
+    }
+  };
+
+  // Handle selecting a user from suggestions
+  const selectUserMention = (user) => {
+    const lastAtIndex = newComment.lastIndexOf('@');
+    const beforeAt = newComment.substring(0, lastAtIndex);
+    const afterAt = newComment.substring(lastAtIndex + 1);
+    const spaceIndex = afterAt.indexOf(' ');
+    const afterMention = spaceIndex === -1 ? '' : afterAt.substring(spaceIndex);
+    
+    const newText = `${beforeAt}@${user.name}${afterMention}`;
+    setNewComment(newText);
+    setShowSuggestions(false);
+    setUserSuggestions([]);
+    setMentionQuery('');
+  };
+
+  // Function to render comment text with highlighted @ mentions
+  const renderCommentWithMentions = (text) => {
+    if (!text || typeof text !== 'string') {
+      return <Text style={styles.commentContent}>{text}</Text>;
+    }
+    
+    const mentionRegex = /@(\w+)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = mentionRegex.exec(text)) !== null) {
+      // Add text before mention
+      if (match.index > lastIndex) {
+        parts.push(
+          <Text key={lastIndex} style={styles.commentContent}>
+            {text.substring(lastIndex, match.index)}
+          </Text>
+        );
       }
 
+      // Add highlighted mention (clickable)
+      const username = match[1];
+      if (username && username.trim()) {
+        parts.push(
+          <TouchableOpacity
+            key={match.index}
+            onPress={() => handleMentionClick(username)}
+            style={styles.mentionContainer}
+          >
+            <Text style={[styles.commentContent, styles.mentionText]}>
+              {match[0]}
+            </Text>
+          </TouchableOpacity>
+        );
+      } else {
+        // If username is invalid, just render as normal text
+        parts.push(
+          <Text key={match.index} style={styles.commentContent}>
+            {match[0]}
+          </Text>
+        );
+      }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(
+        <Text key={lastIndex} style={styles.commentContent}>
+          {text.substring(lastIndex)}
+        </Text>
+      );
+    }
+
+    return parts.length > 0 ? (
+      <Text style={styles.commentContent}>{parts}</Text>
+    ) : (
+      <Text style={styles.commentContent}>{text}</Text>
+    );
+  };
+
+  // Handle clicking on @ mentions
+  const handleMentionClick = async (username) => {
+    if (!username || typeof username !== 'string') {
+      console.error('Invalid username provided to handleMentionClick:', username);
+      return;
+    }
+    
+    try {
+      console.log('🔍 handleMentionClick called with username:', username);
+      // Search for user by name
+      const response = await apiRequest(`/api/users/search?q=${encodeURIComponent(username)}`);
+      console.log('📦 Mention search response:', JSON.stringify(response, null, 2));
+      
+      // Fix: API returns data directly, not wrapped in a data property
+      const users = response.users || response.data?.users || [];
+      console.log('👥 Extracted users array:', users);
+      
+      if (response.success && users.length > 0) {
+        const user = users.find(u => u.name.toLowerCase() === username.toLowerCase());
+        console.log('👤 Found user for mention:', JSON.stringify(user, null, 2));
+        
+        // Handle both _id and id field names (MongoDB returns _id, but JSON conversion might use id)
+        const userId = user?._id || user?.id;
+        
+        if (user && userId) {
+          console.log('✅ Navigating to profile for mention - userId:', userId, 'userName:', user.name);
+          navigation.navigate('UserProfile', {
+            userId: userId,
+            userName: user.name,
+            bugId: bugId, // Pass the current bug ID
+            timestamp: Date.now() // Add timestamp to prevent caching
+          });
+        } else {
+          console.log('❌ User found but missing both _id and id:', user);
+          Alert.alert('User Not Found', `Could not find user @${username}`);
+        }
+      } else {
+        console.log('❌ No users found for mention. Response success:', response.success, 'Users length:', users.length);
+        Alert.alert('User Not Found', `Could not find user @${username}`);
+      }
     } catch (error) {
-      console.error('Error submitting pull request:', error);
-      Alert.alert('Error', 'Failed to submit pull request');
+      console.error('💥 Error finding mentioned user:', error);
+      Alert.alert('Error', 'Failed to find user');
     }
   };
 
@@ -250,8 +401,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
       const response = await apiRequest(`/api/bugs/${bugId}/comments`, {
         method: 'POST',
         body: JSON.stringify({
-          content: newComment,
-          githubProfile: githubProfileUrl.trim() || undefined
+          content: newComment
         })
       });
 
@@ -259,7 +409,6 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
         Alert.alert('Success', 'Comment added successfully!');
         setShowCommentModal(false);
         setNewComment('');
-        setGithubProfileUrl('');
         handleRefresh();
       } else {
         Alert.alert('Error', response.message || 'Failed to add comment');
@@ -276,6 +425,133 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
       console.error('Error opening URL:', err);
       Alert.alert('Error', 'Could not open URL');
     });
+  };
+
+  const handleUsernameClick = async (comment) => {
+    console.log('handleUsernameClick called with comment:', JSON.stringify(comment, null, 2));
+    console.log('comment.author:', comment.author);
+    console.log('comment.author._id:', comment.author?._id);
+    console.log('comment.author.id:', comment.author?.id);
+    
+    // Try to get user ID first
+    let userId = comment.author?._id || comment.author?.id;
+    const userName = comment.author?.name;
+    
+    // Convert ObjectId to string if needed
+    if (userId && typeof userId === 'object' && userId.toString) {
+      userId = userId.toString();
+    }
+    
+    console.log('Extracted userId:', userId, 'type:', typeof userId);
+    console.log('Extracted userName:', userName);
+    
+    if (userId) {
+      console.log('Navigating with userId:', userId, 'userName:', userName);
+      // We have user ID, navigate directly
+      navigation.navigate('UserProfile', {
+        userId: userId,
+        userName: userName || 'Unknown User',
+        bugId: bugId, // Pass the current bug ID
+        timestamp: Date.now() // Add timestamp to force fresh navigation
+      });
+    } else if (userName) {
+      console.log('No userId, trying to search by userName:', userName);
+      // No user ID but we have a name, try to search for the user
+      try {
+        console.log('Searching for user with name:', userName);
+        const response = await apiRequest(`/api/users/search?q=${encodeURIComponent(userName)}`);
+        console.log('Search response:', JSON.stringify(response, null, 2));
+        
+        // Fix: API returns data directly, not wrapped in a data property
+        const users = response.users || response.data?.users || [];
+        console.log('Extracted users array:', users);
+        
+        if (response.success && users.length > 0) {
+          const user = users.find(u => u.name.toLowerCase() === userName.toLowerCase());
+          console.log('Found user:', JSON.stringify(user, null, 2));
+          console.log('User has _id?:', !!user?._id);
+          console.log('User has id?:', !!user?.id);
+          
+          // Handle both _id and id field names (MongoDB returns _id, but JSON conversion might use id)
+          const userId = user?._id || user?.id;
+          
+          if (user && userId) {
+            console.log('Navigating with found userId:', userId, 'user.name:', user.name);
+            navigation.navigate('UserProfile', {
+              userId: userId,
+              userName: user.name,
+              bugId: bugId, // Pass the current bug ID
+              timestamp: Date.now() // Add timestamp to force fresh navigation
+            });
+          } else {
+            console.log('User found but missing both _id and id:', user);
+            Alert.alert('User Not Found', `Could not find user profile for ${userName}`);
+          }
+        } else {
+          console.log('No users found. Response success:', response.success, 'Users length:', users.length);
+          Alert.alert('User Not Found', `Could not find user profile for ${userName}`);
+        }
+      } catch (error) {
+        console.error('Error searching for user:', error);
+        Alert.alert('Error', 'Failed to find user profile');
+      }
+    } else {
+      console.log('No userId or userName available');
+      // No user ID or name available
+      Alert.alert('Error', 'Cannot open user profile - user information not available');
+    }
+  };
+
+  const handleUsernameLongPress = (comment) => {
+    // Check if comment has author
+    if (!comment.author) {
+      Alert.alert('Error', 'Cannot award points - comment author not found');
+      return;
+    }
+    
+    // Only allow bug reporter to award points
+    if (currentUser && bug && currentUser.id === bug.reportedBy._id) {
+      setSelectedComment(comment);
+      setShowCommentPointsModal(true);
+    } else {
+      Alert.alert('Info', 'Only the bug reporter can award points to contributors');
+    }
+  };
+
+  const awardPointsToComment = async () => {
+    try {
+      if (!commentPointsToAward.trim() || isNaN(commentPointsToAward) || 
+          parseInt(commentPointsToAward) < 1 || parseInt(commentPointsToAward) > 1000) {
+        Alert.alert('Error', 'Please enter a valid number of points (1-1000)');
+        return;
+      }
+
+      const response = await apiRequest(`/api/bugs/${bugId}/comments/${selectedComment._id}/award-points`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          points: parseInt(commentPointsToAward),
+          reason: commentAwardReason.trim()
+        }),
+      });
+
+      if (response.success) {
+        Alert.alert('Success', `${commentPointsToAward} points awarded to ${selectedComment.author?.name || 'Unknown User'}!`);
+        setShowCommentPointsModal(false);
+        setCommentPointsToAward('');
+        setCommentAwardReason('');
+        setSelectedComment(null);
+        loadBugDetails(); // Refresh to show updated points
+      } else {
+        Alert.alert('Error', response.message || 'Failed to award points');
+      }
+
+    } catch (error) {
+      console.error('Error awarding points to comment:', error);
+      Alert.alert('Error', 'Failed to award points');
+    }
   };
 
   const getStatusColor = (status) => {
@@ -367,6 +643,27 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
               </Text>
             )}
           </View>
+
+          {/* Bug Management Actions - Only visible to bug reporter */}
+          {currentUser && bug && currentUser.id === bug.reportedBy._id && (
+            <View style={styles.bugActionsContainer}>
+              <TouchableOpacity 
+                style={styles.editButton}
+                onPress={handleEditBug}
+              >
+                <Icon name="edit" size={18} color="#3498DB" />
+                <Text style={styles.editButtonText}>Edit Bug</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.deleteButton}
+                onPress={handleDeleteBug}
+              >
+                <Icon name="delete" size={18} color="#E74C3C" />
+                <Text style={styles.deleteButtonText}>Delete Bug</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Points Section */}
@@ -441,27 +738,6 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
               </View>
             </View>
           )}
-
-          {/* Action Buttons */}
-          {githubActivity?.githubRepo && (
-            <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => setShowForkModal(true)}
-              >
-                <Icon name="call-split" size={16} color="#FFF" />
-                <Text style={styles.actionButtonText}>Record Fork</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => setShowPRModal(true)}
-              >
-                <Icon name="merge-type" size={16} color="#FFF" />
-                <Text style={styles.actionButtonText}>Submit PR</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
 
         {/* Pull Requests Section */}
@@ -504,30 +780,76 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
             </TouchableOpacity>
           </View>
 
-          {bug.comments && bug.comments.map((comment, index) => (
-            <View key={index} style={styles.commentItem}>
-              <View style={styles.commentHeader}>
-                <Text style={styles.commentAuthor}>{comment.author.name}</Text>
-                <Text style={styles.commentTime}>
-                  {new Date(comment.createdAt).toLocaleDateString()}
-                </Text>
-              </View>
-              <Text style={styles.commentContent}>{comment.content}</Text>
-              {comment.pointsAwarded > 0 && (
-                <View style={styles.pointsAwarded}>
-                  <Icon name="stars" size={16} color="#F39C12" />
-                  <Text style={styles.pointsAwardedText}>
-                    {comment.pointsAwarded} points awarded!
+          {bug.comments && bug.comments.map((comment, index) => {
+            // Check if comment mentions PR or pull request
+            const hasPRMention = /pull request|PR|pr|merge request/i.test(comment.content);
+            const prUrlMatch = comment.content.match(/https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/i);
+            
+            return (
+              <View key={index} style={[
+                styles.commentItem,
+                comment.isResolutionComment && styles.resolutionComment,
+                hasPRMention && styles.prMentionComment
+              ]}>
+                <View style={styles.commentHeader}>
+                  <TouchableOpacity 
+                    onPress={(comment.author && (comment.author._id || comment.author.id || comment.author.name)) ? () => handleUsernameClick(comment) : null}
+                    onLongPress={comment.author ? () => handleUsernameLongPress(comment) : null}
+                    disabled={!(comment.author && (comment.author._id || comment.author.id || comment.author.name))}
+                  >
+                    <Text style={[
+                      styles.commentAuthor,
+                      (comment.author && (comment.author._id || comment.author.id || comment.author.name)) && styles.clickableUsername
+                    ]}>
+                      {comment.author?.name || 'Unknown User'}
+                      {hasPRMention && ' 🔀'}
+                    </Text>
+                  </TouchableOpacity>
+                  <Text style={styles.commentTime}>
+                    {new Date(comment.createdAt).toLocaleDateString()}
                   </Text>
                 </View>
-              )}
-              {comment.githubProfile && (
-                <TouchableOpacity onPress={() => openUrl(comment.githubProfile)}>
-                  <Text style={styles.githubLink}>View GitHub Profile</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          ))}
+                
+                {renderCommentWithMentions(comment.content || '')}
+                
+                {/* Show PR link if detected */}
+                {prUrlMatch && (
+                  <TouchableOpacity 
+                    style={styles.prLinkContainer}
+                    onPress={() => openUrl(prUrlMatch[0])}
+                  >
+                    <Icon name="code" size={16} color="#4ECDC4" />
+                    <Text style={styles.detectedPrLink}>
+                      Pull Request #{prUrlMatch[1]}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                
+                {comment.pointsAwarded > 0 && (
+                  <View style={styles.pointsAwarded}>
+                    <Icon name="stars" size={16} color="#F39C12" />
+                    <Text style={styles.pointsAwardedText}>
+                      {comment.pointsAwarded} points awarded!
+                    </Text>
+                  </View>
+                )}
+                
+                {comment.githubProfile && (
+                  <TouchableOpacity onPress={() => openUrl(comment.githubProfile)}>
+                    <Text style={styles.githubLink}>View GitHub Profile</Text>
+                  </TouchableOpacity>
+                )}
+                
+                {/* Show award points hint for bug reporter */}
+                {currentUser && bug && currentUser.id === bug.reportedBy._id && 
+                 comment.pointsAwarded === 0 && hasPRMention && (
+                  <Text style={styles.awardHint}>
+                    💡 Tap username to view profile • Long press to award points
+                  </Text>
+                )}
+              </View>
+            );
+          })}
         </View>
       </ScrollView>
 
@@ -580,27 +902,50 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Add Comment</Text>
+            <Text style={styles.modalSubtitle}>
+              💡 Type @ to mention users (e.g., @username for PR contributions)
+            </Text>
             
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Your comment..."
-              value={newComment}
-              onChangeText={setNewComment}
-              multiline
-              numberOfLines={4}
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="GitHub profile URL (optional)"
-              value={githubProfileUrl}
-              onChangeText={setGithubProfileUrl}
-            />
+            <View style={styles.commentInputContainer}>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Share your thoughts, mention team members with @username, or link your PR: https://github.com/owner/repo/pull/123"
+                value={newComment}
+                onChangeText={handleCommentTextChange}
+                multiline
+                numberOfLines={4}
+              />
+              
+              {/* Username Suggestions */}
+              {showSuggestions && userSuggestions.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                  <Text style={styles.suggestionsTitle}>Tap to mention:</Text>
+                  {userSuggestions.map((user, index) => (
+                    <TouchableOpacity
+                      key={user._id || index}
+                      style={styles.suggestionItem}
+                      onPress={() => selectUserMention(user)}
+                    >
+                      <Icon name="person" size={16} color="#666" />
+                      <Text style={styles.suggestionText}>@{user.name}</Text>
+                      {user.githubProfile?.username && (
+                        <Text style={styles.suggestionGithub}>({user.githubProfile.username})</Text>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
             
             <View style={styles.modalButtons}>
               <TouchableOpacity 
                 style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setShowCommentModal(false)}
+                onPress={() => {
+                  setShowCommentModal(false);
+                  setNewComment('');
+                  setShowSuggestions(false);
+                  setUserSuggestions([]);
+                }}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
@@ -646,91 +991,49 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
         </View>
       </Modal>
 
-      {/* Record Fork Modal */}
-      <Modal visible={showForkModal} animationType="slide" transparent>
+      {/* Award Points from Comment Modal */}
+      <Modal visible={showCommentPointsModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Record Fork</Text>
+            <Text style={styles.modalTitle}>Award Points</Text>
+            <Text style={styles.modalSubtitle}>
+              Award points to {selectedComment?.author?.name} for their contribution
+            </Text>
             
             <TextInput
               style={styles.input}
-              placeholder="Your GitHub username"
-              value={githubUsername}
-              onChangeText={setGithubUsername}
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Fork URL"
-              value={forkUrl}
-              onChangeText={setForkUrl}
-            />
-            
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setShowForkModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={recordFork}
-              >
-                <Text style={styles.confirmButtonText}>Record Fork</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Submit PR Modal */}
-      <Modal visible={showPRModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Submit Pull Request</Text>
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Your GitHub username"
-              value={githubUsername}
-              onChangeText={setGithubUsername}
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Pull request title"
-              value={prTitle}
-              onChangeText={setPrTitle}
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="PR number"
-              value={prNumber}
-              onChangeText={setPrNumber}
+              placeholder="Points to award (1-1000)"
+              value={commentPointsToAward}
+              onChangeText={setCommentPointsToAward}
               keyboardType="numeric"
             />
             
             <TextInput
-              style={styles.input}
-              placeholder="Pull request URL"
-              value={prUrl}
-              onChangeText={setPrUrl}
+              style={[styles.input, styles.textArea]}
+              placeholder="Reason for awarding points (optional)..."
+              value={commentAwardReason}
+              onChangeText={setCommentAwardReason}
+              multiline
+              numberOfLines={3}
             />
             
             <View style={styles.modalButtons}>
               <TouchableOpacity 
                 style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setShowPRModal(false)}
+                onPress={() => {
+                  setShowCommentPointsModal(false);
+                  setSelectedComment(null);
+                  setCommentPointsToAward('');
+                  setCommentAwardReason('');
+                }}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.modalButton, styles.confirmButton]}
-                onPress={submitPullRequest}
+                onPress={awardPointsToComment}
               >
-                <Text style={styles.confirmButtonText}>Submit PR</Text>
+                <Text style={styles.confirmButtonText}>Award Points</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -743,7 +1046,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#000000',
   },
   loadingContainer: {
     flex: 1,
@@ -752,7 +1055,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: '#CCCCCC',
   },
   errorContainer: {
     flex: 1,
@@ -782,9 +1085,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
+    borderBottomColor: '#444444',
   },
   backButton: {
     padding: 8,
@@ -792,16 +1095,17 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2E3A59',
+    color: '#FFFFFF',
   },
   refreshButton: {
     padding: 8,
   },
   scrollView: {
     flex: 1,
+    backgroundColor: '#000000',
   },
   bugHeader: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     padding: 16,
     marginBottom: 8,
   },
@@ -833,12 +1137,12 @@ const styles = StyleSheet.create({
   bugTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#2E3A59',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   bugId: {
     fontSize: 14,
-    color: '#666',
+    color: '#CCCCCC',
     marginBottom: 12,
   },
   metaInfo: {
@@ -846,11 +1150,11 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 14,
-    color: '#666',
+    color: '#CCCCCC',
     marginBottom: 4,
   },
   pointsSection: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     padding: 16,
     marginBottom: 8,
   },
@@ -867,7 +1171,7 @@ const styles = StyleSheet.create({
   },
   pointsText: {
     fontSize: 16,
-    color: '#333',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   awardButton: {
@@ -887,7 +1191,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   githubSection: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     padding: 16,
     marginBottom: 8,
   },
@@ -899,18 +1203,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2E3A59',
+    color: '#FFFFFF',
     marginLeft: 8,
   },
   repoInfo: {
     padding: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#2a2a2a',
     borderRadius: 8,
     marginBottom: 16,
   },
   repoUrl: {
     fontSize: 14,
-    color: '#333',
+    color: '#CCCCCC',
     marginBottom: 8,
   },
   openRepoText: {
@@ -971,13 +1275,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   prSection: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     padding: 16,
     marginBottom: 8,
   },
   prItem: {
     padding: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#2a2a2a',
     borderRadius: 8,
     marginBottom: 12,
   },
@@ -1005,7 +1309,7 @@ const styles = StyleSheet.create({
   },
   prAuthor: {
     fontSize: 12,
-    color: '#666',
+    color: '#CCCCCC',
     marginBottom: 4,
   },
   prLink: {
@@ -1014,17 +1318,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   section: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     padding: 16,
     marginBottom: 8,
   },
   description: {
     fontSize: 16,
-    color: '#333',
+    color: '#FFFFFF',
     lineHeight: 24,
   },
   commentsSection: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     padding: 16,
     marginBottom: 8,
   },
@@ -1050,7 +1354,7 @@ const styles = StyleSheet.create({
   },
   commentItem: {
     padding: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#2a2a2a',
     borderRadius: 8,
     marginBottom: 12,
   },
@@ -1062,15 +1366,15 @@ const styles = StyleSheet.create({
   commentAuthor: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#FFFFFF',
   },
   commentTime: {
     fontSize: 12,
-    color: '#666',
+    color: '#CCCCCC',
   },
   commentContent: {
     fontSize: 14,
-    color: '#333',
+    color: '#FFFFFF',
     lineHeight: 20,
     marginBottom: 8,
   },
@@ -1090,6 +1394,44 @@ const styles = StyleSheet.create({
     color: '#3498DB',
     fontWeight: '600',
   },
+  // New styles for enhanced comment features
+  resolutionComment: {
+    backgroundColor: '#1a4a3d',
+    borderLeftWidth: 3,
+    borderLeftColor: '#27AE60',
+  },
+  prMentionComment: {
+    backgroundColor: '#1a2a3d',
+    borderLeftWidth: 3,
+    borderLeftColor: '#4ECDC4',
+  },
+  clickableUsername: {
+    color: '#3498DB',
+    textDecorationLine: 'underline',
+  },
+  prLinkContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4ECDC4',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  detectedPrLink: {
+    fontSize: 12,
+    color: '#FFF',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  awardHint: {
+    fontSize: 11,
+    color: '#7F8C8D',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1097,7 +1439,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#1a1a1a',
     borderRadius: 12,
     padding: 20,
     width: screenWidth * 0.9,
@@ -1106,29 +1448,79 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2E3A59',
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 8,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: '#CCCCCC',
     textAlign: 'center',
     marginBottom: 20,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#E1E8ED',
+    borderColor: '#444444',
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
     marginBottom: 16,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#2a2a2a',
+    color: '#FFFFFF',
   },
   textArea: {
     height: 80,
     textAlignVertical: 'top',
+  },
+  // Username suggestion styles
+  commentInputContainer: {
+    position: 'relative',
+  },
+  suggestionsContainer: {
+    backgroundColor: '#2a2a2a',
+    borderWidth: 1,
+    borderColor: '#E1E8ED',
+    borderRadius: 8,
+    maxHeight: 150,
+    marginBottom: 16,
+  },
+  suggestionsTitle: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E1E8ED',
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: '#333',
+    marginLeft: 8,
+    fontWeight: '600',
+  },
+  suggestionGithub: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
+  // @ mention highlighting
+  mentionText: {
+    color: '#3498DB',
+    fontWeight: '600',
+    backgroundColor: '#EBF3FD',
+    paddingHorizontal: 2,
+    borderRadius: 2,
+  },
+  mentionContainer: {
+    display: 'inline-block',
   },
   modalButtons: {
     flexDirection: 'row',
@@ -1156,6 +1548,46 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  bugActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E1E8ED',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EBF3FD',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#3498DB',
+  },
+  editButtonText: {
+    color: '#3498DB',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDEBEB',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E74C3C',
+  },
+  deleteButtonText: {
+    color: '#E74C3C',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
   },
 });
 

@@ -22,7 +22,7 @@ const bugSchema = new mongoose.Schema({
   project: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Project',
-    required: true
+    required: false // Make project optional
   },
   reportedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -61,7 +61,7 @@ const bugSchema = new mongoose.Schema({
   // Bug status
   status: {
     type: String,
-    enum: ['open', 'in-progress', 'testing', 'resolved', 'closed', 'rejected'],
+    enum: ['open', 'in-progress', 'under-review', 'testing', 'resolved', 'closed', 'rejected'],
     default: 'open'
   },
   resolution: {

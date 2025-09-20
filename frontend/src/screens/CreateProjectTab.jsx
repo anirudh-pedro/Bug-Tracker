@@ -79,7 +79,7 @@ const CreateBugReportScreen = ({navigation}) => {
 
   const priorities = ['Low', 'Medium', 'High', 'Critical'];
   const severities = ['Minor', 'Medium', 'Major', 'Critical'];
-  const categories = ['Bug', 'Feature Request', 'Enhancement', 'Documentation', 'Performance', 'Security'];
+  const categories = ['Bug', 'Feature', 'Improvement', 'Task', 'Story'];
 
   const selectImage = () => {
     Alert.alert(
@@ -124,10 +124,6 @@ const CreateBugReportScreen = ({navigation}) => {
       Alert.alert('Error', 'Please provide a bug description');
       return;
     }
-    if (!selectedProject) {
-      Alert.alert('Error', 'Please select a project');
-      return;
-    }
     if (!stepsToReproduce.trim()) {
       Alert.alert('Error', 'Please provide steps to reproduce the bug');
       return;
@@ -145,13 +141,13 @@ const CreateBugReportScreen = ({navigation}) => {
         title: bugTitle.trim(),
         description: bugDescription.trim(),
         priority: selectedPriority.toLowerCase(),
-        project: selectedProject, // Send project ID
-        stepsToReproduce: stepsToReproduce.trim(),
-        expectedBehavior: expectedBehavior.trim(),
-        actualBehavior: actualBehavior.trim(),
-        environment: environment.trim(),
-        category: selectedCategory,
-        repositoryUrl: repositoryUrl.trim(),
+        project: selectedProject || null, // Send project ID or null if not selected
+        stepsToReproduce: stepsToReproduce.trim() || undefined,
+        expectedBehavior: expectedBehavior.trim() || undefined,
+        actualBehavior: actualBehavior.trim() || undefined,
+        environment: environment.trim() || undefined,
+        category: selectedCategory.toLowerCase(), // Ensure lowercase for backend
+        repositoryUrl: repositoryUrl.trim() || undefined,
         // Enhanced fields for GitHub integration
         githubRepo: repositoryUrl.trim() ? {
           url: repositoryUrl.trim(),
@@ -159,12 +155,14 @@ const CreateBugReportScreen = ({navigation}) => {
           owner: repositoryUrl.trim().split('/').slice(-2, -1)[0] || ''
         } : null,
         bountyPoints: 10, // Default bounty points
-        tags: [selectedCategory, selectedPriority]
+        tags: [selectedCategory.toLowerCase(), selectedPriority.toLowerCase()]
       };
+
+      console.log('🐛 Submitting bug report:', JSON.stringify(bugReport, null, 2));
 
       const response = await apiRequest('/api/bugs', {
         method: 'POST',
-        data: bugReport
+        body: JSON.stringify(bugReport)
       });
 
       if (response.success) {
@@ -193,10 +191,19 @@ const CreateBugReportScreen = ({navigation}) => {
       }
     } catch (error) {
       console.error('Error submitting bug report:', error);
-      Alert.alert(
-        'Error', 
-        'Failed to submit bug report. Please check your connection and try again.\n\n' + (error.message || 'Unknown error')
-      );
+      
+      let errorMessage = 'Failed to submit bug report. Please check your connection and try again.';
+      
+      // Check if it's a validation error with specific details
+      if (error.message.includes('Validation failed')) {
+        errorMessage = 'Please check that all required fields are filled correctly:\n\n';
+        errorMessage += '• Title (3-200 characters)\n';
+        errorMessage += '• Description (10-1000 characters)\n';
+        errorMessage += '• Steps to reproduce\n';
+        errorMessage += '• Priority must be: Low, Medium, High, or Critical';
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setSubmitting(false);
     }
