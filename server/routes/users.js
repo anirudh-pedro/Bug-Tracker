@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate, authorize } = require('../middleware/auth');
+const { authLimiter, strictLimiter } = require('../middleware/rateLimiter');
 const {
   testAuth,
   debugUsers,
@@ -9,48 +10,50 @@ const {
   updateProfile,
   getProfileStatus
 } = require('../controller/userController');
+const {
+  searchUsers,
+  getUserProfile,
+  getUserStatistics,
+  getLeaderboard
+} = require('../controller/standardizedUserController');
 
 const router = express.Router();
 
-// @desc    Test token authentication
+// @desc    Test token authentication (development only)
 // @route   GET /api/users/test-auth
 // @access  Private
-router.get('/test-auth', authenticate, testAuth);
+router.get('/test-auth', authLimiter, authenticate, (req, res, next) => {
+  // Only allow test-auth in development environment
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({
+      success: false,
+      message: 'Endpoint not available in production'
+    });
+  }
+  next();
+}, testAuth);
 
 // @desc    Debug endpoint to see all users
 // @route   GET /api/users/debug
-// @access  Private
-router.get('/debug', authenticate, debugUsers);
+// @access  Private (Admin only)
+router.get('/debug', authLimiter, authenticate, authorize('admin'), debugUsers);
 
-// @desc    Debug endpoint to see all users (public for testing)
-// @route   GET /api/users/debug-public
-// @access  Public
-router.get('/debug-public', async (req, res) => {
-  try {
-    const User = require('../models/User');
-    const users = await User.find({}).select('email username googleId createdAt hasCompletedOnboarding');
-    res.json({
-      success: true,
-      count: users.length,
-      users: users.map(user => ({
-        id: user._id,
-        email: user.email,
-        username: user.username || 'NO_USERNAME',
-        hasUsername: !!user.username,
-        hasCompletedOnboarding: user.hasCompletedOnboarding,
-        createdAt: user.createdAt
-      }))
-    });
-  } catch (error) {
-    console.error('Debug public endpoint error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
+// Note: debug-public endpoint removed for security
+// Use admin-authenticated debug endpoint instead
 
 // @desc    Clear all users (for development only)
 // @route   DELETE /api/users/clear-all
-// @access  Private
-router.delete('/clear-all', authenticate, clearAllUsers);
+// @access  Private (Admin only)
+router.delete('/clear-all', strictLimiter, authenticate, authorize('admin'), (req, res, next) => {
+  // Only allow in development
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({
+      success: false,
+      message: 'Endpoint not available in production'
+    });
+  }
+  next();
+}, clearAllUsers);
 
 // @desc    Check username availability
 // @route   POST /api/users/check-username
@@ -75,157 +78,85 @@ router.get('/profile-status', authenticate, getProfileStatus);
 // @desc    Search users by name for mentions
 // @route   GET /api/users/search
 // @access  Private
-router.get('/search', authenticate, async (req, res) => {
-  try {
-    const { q } = req.query;
-    
-    if (!q || q.length < 2) {
-      return res.json({
-        success: true,
-        data: { users: [] }
-      });
-    }
-
-    const User = require('../models/User');
-    
-    // Search by name (case insensitive)
-    const users = await User.find({
-      name: { $regex: q, $options: 'i' },
-      hasCompletedOnboarding: true
-    })
-    .select('_id name email githubProfile')
-    .limit(10);
-
-    res.json({
-      success: true,
-      data: { users }
-    });
-
-  } catch (error) {
-    console.error('User search error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-});
+router.get('/search', authenticate, searchUsers);
 
 // @desc    Get user profile by ID
 // @route   GET /api/users/profile/:userId
 // @access  Private
-router.get('/profile/:userId', authenticate, async (req, res) => {
-  try {
-    const { userId } = req.params;
-    
-    const User = require('../models/User');
-    const user = await User.findById(userId)
-      .select('name email role avatar githubProfile company location bio skills phoneNumber createdAt')
-      .lean();
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: { user }
-    });
-
-  } catch (error) {
-    console.error('Get user profile error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-});
+router.get('/profile/:userId', authenticate, getUserProfile);
 
 // @desc    Get user statistics and recent activity
 // @route   GET /api/users/stats/:userId
 // @access  Private
-router.get('/stats/:userId', authenticate, async (req, res) => {
-  try {
-    const { userId } = req.params;
-    
-    const User = require('../models/User');
-    const Bug = require('../models/Bug');
-    
-    // Get user
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
+router.get('/stats/:userId', authenticate, getUserStatistics);
 
-    // Get bug statistics
-    const [bugsReported, bugsResolved, pullRequests] = await Promise.all([
-      Bug.countDocuments({ reportedBy: userId }),
-      Bug.countDocuments({ resolvedBy: userId }),
-      Bug.aggregate([
-        { $match: { 'pullRequests.author.userId': userId } },
-        { $unwind: '$pullRequests' },
-        { $match: { 'pullRequests.author.userId': userId } },
-        { $count: 'total' }
-      ])
-    ]);
+// @desc    Get current user's statistics and recent activity
+// @route   GET /api/users/my-stats
+// @access  Private
+router.get('/my-stats', authenticate, async (req, res) => {
+  try {
+    // Use the authenticated user's ID from the JWT token
+    const userId = req.user.id;
+    console.log('📊 Getting current user stats for userId:', userId);
+    
+    // Get user stats using unified helper function
+    const { getUserStats } = require('../utils/userUtils');
+    const { user, stats: userStats } = await getUserStats(userId);
+    
+    console.log('✅ User found:', user.email);
 
     // Get recent activity (bugs reported/resolved, comments, etc.)
+    const Bug = require('../models/Bug');
     const recentBugs = await Bug.find({
       $or: [
-        { reportedBy: userId },
-        { resolvedBy: userId }
+        { reportedBy: user._id },
+        { resolvedBy: user._id }
       ]
     })
     .sort({ createdAt: -1 })
     .limit(10)
     .select('title status createdAt resolvedAt reportedBy resolvedBy')
     .populate('reportedBy', 'name')
-    .populate('resolvedBy', 'name');
+    .populate('resolvedBy', 'name')
+    .lean()
+    .catch(() => []);
 
-    // Format recent activity
+    // Format recent activity with standardized data
+    const { standardizeDate, createSuccessResponse, standardizeUserStats } = require('../utils/responseStandardizer');
     const recentActivity = recentBugs.map(bug => {
-      if (bug.reportedBy._id.toString() === userId) {
+      if (bug.reportedBy && bug.reportedBy._id.toString() === user._id.toString()) {
         return {
           type: 'bug_reported',
           description: `Reported bug: ${bug.title}`,
-          createdAt: bug.createdAt
+          createdAt: standardizeDate(bug.createdAt),
+          points: 10 // Standard points for reporting a bug
         };
-      } else if (bug.resolvedBy && bug.resolvedBy._id.toString() === userId) {
+      } else if (bug.resolvedBy && bug.resolvedBy._id.toString() === user._id.toString()) {
         return {
-          type: 'bug_resolved',
+          type: 'bug_resolved', 
           description: `Resolved bug: ${bug.title}`,
-          createdAt: bug.resolvedAt || bug.createdAt
+          createdAt: standardizeDate(bug.resolvedAt),
+          points: 25 // Standard points for resolving a bug
         };
       }
       return null;
     }).filter(Boolean);
 
-    const stats = {
-      totalPoints: user.points?.total || 0,
-      bugsReported: bugsReported,
-      bugsResolved: bugsResolved,
-      pullRequests: pullRequests[0]?.total || 0
-    };
+    const response = createSuccessResponse({
+      stats: standardizeUserStats(userStats),
+      recentActivity: recentActivity
+    }, 'User statistics retrieved successfully');
 
-    res.json({
-      success: true,
-      data: { 
-        stats,
-        recentActivity: recentActivity.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      }
-    });
+    res.json(response);
 
   } catch (error) {
-    console.error('Get user stats error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
+    console.error('Get current user stats error:', error);
+    const { createErrorResponse } = require('../utils/responseStandardizer');
+    res.status(500).json(createErrorResponse(
+      'Server error while retrieving user statistics',
+      process.env.NODE_ENV === 'development' ? error.message : null,
+      500
+    ));
   }
 });
 
@@ -283,5 +214,10 @@ router.post('/award-points', authenticate, async (req, res) => {
     });
   }
 });
+
+// @desc    Get leaderboard (top users by points)
+// @route   GET /api/users/leaderboard
+// @access  Private
+router.get('/leaderboard', authenticate, getLeaderboard);
 
 module.exports = router;

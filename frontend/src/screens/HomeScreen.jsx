@@ -15,17 +15,19 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import auth from '@react-native-firebase/auth';
+import { getApp } from '@react-native-firebase/app';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiRequest } from '../utils/networkUtils';
+import { apiRequest } from '../utils/enhancedNetworkUtils';
 
 const {width: screenWidth} = Dimensions.get('window');
 const isTablet = screenWidth >= 768;
 
 const HomeScreen = ({ navigation, route }) => {
-  const user = auth().currentUser;
+  const app = getApp();
+  const user = auth(app).currentUser;
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const [projectName, setProjectName] = useState('');
@@ -75,45 +77,95 @@ const HomeScreen = ({ navigation, route }) => {
     loadUserProfile();
   }, [user?.uid]);
 
-  // Sample data for stats
-  const statsData = [
-    { id: '1', title: 'Bugs Resolved', count: 24, icon: 'check-circle', color: '#ff9500', bgColor: '#2d1f0a' },
-    { id: '2', title: 'Bugs Reported', count: 12, icon: 'bug-report', color: '#ff9500', bgColor: '#2d1f0a' },
-    { id: '3', title: 'Projects Created', count: 3, icon: 'folder', color: '#ff9500', bgColor: '#2d1f0a' },
-    { id: '4', title: 'Active/Open Bugs', count: 8, icon: 'pending', color: '#ff9500', bgColor: '#2d1f0a' },
-  ];
+  // Dynamic data states
+  const [statsData, setStatsData] = useState([]);
+  const [trendingProjects, setTrendingProjects] = useState([]);
+  const [openBugs, setOpenBugs] = useState([]);
+  const [recentContributions, setRecentContributions] = useState([]);
+  const [userPoints, setUserPoints] = useState(0);
+  
+  // Project management states
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [showProjectMenu, setShowProjectMenu] = useState(false);
+  const [showEditProjectModal, setShowEditProjectModal] = useState(false);
+  const [editProjectName, setEditProjectName] = useState('');
+  const [editProjectDescription, setEditProjectDescription] = useState('');
+  const [editProjectKey, setEditProjectKey] = useState('');
 
-  // Sample data for trending projects
-  const trendingProjects = [
-    { id: '1', name: 'React E-Commerce', owner: 'john_dev', bugCount: 15, description: 'Full-stack e-commerce app', repo: 'github.com/shop/react-app' },
-    { id: '2', name: 'Mobile Weather App', owner: 'weather_team', bugCount: 8, description: 'React Native weather app', repo: 'github.com/weather/mobile' },
-    { id: '3', name: 'Django Blog API', owner: 'blog_devs', bugCount: 6, description: 'RESTful blog API', repo: 'github.com/blog/api' },
-    { id: '4', name: 'Vue.js Dashboard', owner: 'admin_ui', bugCount: 4, description: 'Admin management panel', repo: 'github.com/admin/vue-dash' },
-  ];
+  // Load user-specific data from API
+  useEffect(() => {
+    const fetchUserContributions = async () => {
+      try {
+        // Fetch user-specific statistics
+        const userStatsRes = await apiRequest('/api/users/my-stats', { method: 'GET' });
+        if (userStatsRes.success && userStatsRes.data) {
+          const userStats = userStatsRes.data.stats;
+          setStatsData([
+            { id: '1', title: 'Bugs Resolved', count: userStats.bugsResolved || 0, icon: 'check-circle', color: '#ff9500', bgColor: '#2d1f0a' },
+            { id: '2', title: 'Bugs Reported', count: userStats.bugsReported || 0, icon: 'bug-report', color: '#ff9500', bgColor: '#2d1f0a' },
+            { id: '3', title: 'Projects Created', count: userStats.projectsCreated || 0, icon: 'folder', color: '#ff9500', bgColor: '#2d1f0a' },
+            { id: '4', title: 'Active/Open Bugs', count: userStats.activeBugs || 0, icon: 'pending', color: '#ff9500', bgColor: '#2d1f0a' },
+          ]);
+          setUserPoints(userStats.totalPoints || 0);
+          
+          // Set recent contributions from user data
+          setRecentContributions((userStatsRes.data.recentActivity || []).map((activity, idx) => ({
+            id: `${activity.type}-${activity.createdAt || Date.now()}-${idx}`,
+            title: activity.description,
+            project: activity.project || '',
+            status: activity.type === 'bug_resolved' ? 'Resolved' : activity.type === 'pr_submitted' ? 'PR Submitted' : 'Open',
+            timestamp: activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : '',
+            type: activity.type,
+          })));
+        }
 
-  // Sample data for open bugs
-  const openBugs = [
-    { id: '1', title: 'Authentication timeout error', project: 'React E-Commerce', priority: 'High', lastUpdated: '2h ago', status: 'open' },
-    { id: '2', title: 'UI layout breaks on mobile', project: 'Mobile Weather App', priority: 'Medium', lastUpdated: '4h ago', status: 'open' },
-    { id: '3', title: 'Database connection pooling', project: 'Django Blog API', priority: 'Medium', lastUpdated: '1d ago', status: 'open' },
-    { id: '4', title: 'Memory leak in data processing', project: 'Vue.js Dashboard', priority: 'High', lastUpdated: '2d ago', status: 'open' },
-  ];
+        // Fetch user-specific projects and global dashboard data
+        const [projectsRes, dashboardRes] = await Promise.all([
+          apiRequest('/api/projects', { method: 'GET' }),
+          apiRequest('/api/dashboard', { method: 'GET' })
+        ]);
 
-  // Sample data for recent contributions
-  const recentContributions = [
-    { id: '1', title: 'Fixed login validation bug', project: 'React E-Commerce', status: 'Resolved', timestamp: '2 hours ago', type: 'fix' },
-    { id: '2', title: 'Submitted PR for API rate limiting', project: 'Django Blog API', status: 'PR Submitted', timestamp: '1 day ago', type: 'pr' },
-    { id: '3', title: 'Reported CSS styling issue', project: 'Mobile Weather App', status: 'Open', timestamp: '3 days ago', type: 'report' },
-    { id: '4', title: 'Working on database optimization', project: 'Vue.js Dashboard', status: 'In Progress', timestamp: '5 days ago', type: 'progress' },
-  ];
+        // Set user's own projects instead of global trending projects
+        if (projectsRes.success && projectsRes.data) {
+          setTrendingProjects((projectsRes.data.projects || []).map((proj, idx) => ({
+            id: proj._id || `project-${idx}-${Date.now()}`,
+            name: proj.name,
+            owner: proj.owner?.name || 'Unknown',
+            bugCount: proj.stats?.totalBugs || 0,
+            description: proj.description || '',
+            repo: proj.repository?.url || '',
+          })));
+        }
+
+        // Get global recent bugs (or we could make this user-specific too)
+        if (dashboardRes.success && dashboardRes.data) {
+          // Open bugs
+          setOpenBugs((dashboardRes.data.recentBugs || []).map((bug, idx) => ({
+            id: bug._id || `bug-${idx}-${Date.now()}`,
+            title: bug.title,
+            project: bug.project?.name || '',
+            priority: bug.priority || 'Medium',
+            lastUpdated: bug.updatedAt ? new Date(bug.updatedAt).toLocaleDateString() : '',
+            status: bug.status,
+          })));
+        }
+      } catch (err) {
+        console.error('Error loading dashboard:', err);
+      }
+    };
+    fetchUserContributions();
+  }, []);
 
   // Pull to refresh handler
-  const onRefresh = React.useCallback(() => {
+  const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await fetchUserContributions();
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
       setRefreshing(false);
-    }, 2000);
+    }
   }, []);
 
   // Stats card component
@@ -141,22 +193,35 @@ const HomeScreen = ({ navigation, route }) => {
     );
   };
 
-  // Trending project card component
+  // Your project card component
   const renderProjectCard = ({ item }) => (
-    <TouchableOpacity style={styles.projectCard} onPress={() => handleProjectPress(item)}>
-      <View style={styles.projectHeader}>
-        <Text style={styles.projectName}>{item.name}</Text>
-        <View style={styles.bugCountBadge}>
-          <Text style={styles.bugCountText}>{item.bugCount} bugs</Text>
+    <View style={styles.projectCard}>
+      <TouchableOpacity 
+        style={styles.projectContent} 
+        onPress={() => handleProjectPress(item)}
+      >
+        <View style={styles.projectHeader}>
+          <Text style={styles.projectName}>{item.name}</Text>
+          <View style={styles.projectHeaderRight}>
+            <View style={styles.bugCountBadge}>
+              <Text style={styles.bugCountText}>{item.bugCount} bugs</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.projectMenuButton}
+              onPress={() => handleProjectMenuPress(item)}
+            >
+              <Icon name="more-vert" size={20} color="#888888" />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-      <Text style={styles.projectOwner}>by {item.owner}</Text>
-      <Text style={styles.projectDescription}>{item.description}</Text>
-      <View style={styles.projectFooter}>
-        <Icon name="link" size={14} color="#ff9500" />
-        <Text style={styles.repoText}>{item.repo}</Text>
-      </View>
-    </TouchableOpacity>
+        <Text style={styles.projectOwner}>by {item.owner}</Text>
+        <Text style={styles.projectDescription}>{item.description}</Text>
+        <View style={styles.projectFooter}>
+          <Icon name="link" size={14} color="#ff9500" />
+          <Text style={styles.repoText}>{item.repo}</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
   );
 
   // Open bug card component
@@ -344,7 +409,7 @@ const HomeScreen = ({ navigation, route }) => {
       }
       
       console.log('Signing out from Firebase...');
-      await auth().signOut();
+      await auth(app).signOut();
       console.log('Firebase sign out successful');
       console.log('User signed out successfully');
     } catch (error) {
@@ -370,7 +435,7 @@ const HomeScreen = ({ navigation, route }) => {
       console.log('Force signing out...');
       setShowProfileDropdown(false);
       // Just sign out from Firebase - this should be enough to return to login
-      await auth().signOut();
+      await auth(app).signOut();
       console.log('Force sign out successful');
     } catch (error) {
       console.error('Force sign-out error:', error);
@@ -394,6 +459,83 @@ const HomeScreen = ({ navigation, route }) => {
     console.log('Help Support clicked');
     setShowProfileDropdown(false);
     Alert.alert('Help & Support', 'Help documentation will be available soon!');
+  };
+
+  // Project management handlers
+  const handleProjectMenuPress = (project) => {
+    setSelectedProject(project);
+    setShowProjectMenu(true);
+  };
+
+  const handleEditProject = () => {
+    setEditProjectName(selectedProject.name);
+    setEditProjectDescription(selectedProject.description);
+    setEditProjectKey(selectedProject.key);
+    setShowProjectMenu(false);
+    setShowEditProjectModal(true);
+  };
+
+  const handleDeleteProject = () => {
+    Alert.alert(
+      'Delete Project',
+      `Are you sure you want to delete "${selectedProject.name}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              const response = await apiRequest(`/api/projects/${selectedProject.id}`, {
+                method: 'DELETE'
+              });
+              
+              if (response.success) {
+                Alert.alert('Success', 'Project deleted successfully');
+                // Refresh the projects list
+                onRefresh();
+              } else {
+                Alert.alert('Error', response.message || 'Failed to delete project');
+              }
+            } catch (error) {
+              console.error('Delete project error:', error);
+              Alert.alert('Error', 'Failed to delete project');
+            }
+            setShowProjectMenu(false);
+          }
+        }
+      ]
+    );
+  };
+
+  const handleUpdateProject = async () => {
+    if (!editProjectName.trim()) {
+      Alert.alert('Error', 'Project name is required');
+      return;
+    }
+
+    try {
+      const response = await apiRequest(`/api/projects/${selectedProject.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: editProjectName.trim(),
+          description: editProjectDescription.trim(),
+          key: editProjectKey.trim().toUpperCase()
+        })
+      });
+
+      if (response.success) {
+        Alert.alert('Success', 'Project updated successfully');
+        // Refresh the projects list
+        onRefresh();
+        setShowEditProjectModal(false);
+      } else {
+        Alert.alert('Error', response.message || 'Failed to update project');
+      }
+    } catch (error) {
+      console.error('Update project error:', error);
+      Alert.alert('Error', 'Failed to update project');
+    }
   };
 
   if (!user) {
@@ -444,7 +586,7 @@ const HomeScreen = ({ navigation, route }) => {
                   onPress={() => navigation.navigate('Points')}
                 >
                   <Icon name="emoji-events" size={20} color="#ff9500" />
-                  <Text style={styles.pointsButtonText}>1280</Text>
+                  <Text style={styles.pointsButtonText}>{userPoints.toLocaleString()}</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
@@ -588,7 +730,7 @@ const HomeScreen = ({ navigation, route }) => {
                 {/* Trending Projects */}
                 <View style={[styles.trendingColumn, isTablet && styles.trendingColumnTablet]}>
                   <View style={styles.columnHeader}>
-                    <Text style={styles.columnTitle}>🔥 Trending Projects</Text>
+                    <Text style={styles.columnTitle}>� Your Projects</Text>
                   </View>
                   <FlatList
                     data={trendingProjects}
@@ -678,6 +820,105 @@ const HomeScreen = ({ navigation, route }) => {
             >
               <Text style={styles.createButtonText}>Continue</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Project Menu Modal */}
+      <Modal
+        visible={showProjectMenu}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowProjectMenu(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowProjectMenu(false)}
+        >
+          <View style={styles.projectMenuContainer}>
+            <TouchableOpacity 
+              style={styles.menuOption}
+              onPress={handleEditProject}
+            >
+              <Icon name="edit" size={20} color="#ff9500" />
+              <Text style={styles.menuOptionText}>Edit Project</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.menuOption, styles.deleteOption]}
+              onPress={handleDeleteProject}
+            >
+              <Icon name="delete" size={20} color="#ff4444" />
+              <Text style={[styles.menuOptionText, styles.deleteOptionText]}>Delete Project</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Edit Project Modal */}
+      <Modal
+        visible={showEditProjectModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowEditProjectModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.editModalContainer}>
+            <View style={styles.editModalHeader}>
+              <Text style={styles.editModalTitle}>Edit Project</Text>
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={() => setShowEditProjectModal(false)}
+              >
+                <Icon name="close" size={24} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.editFormContainer}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Project Name</Text>
+                <TextInput
+                  style={styles.projectInput}
+                  placeholder="Enter project name"
+                  placeholderTextColor="#888888"
+                  value={editProjectName}
+                  onChangeText={setEditProjectName}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Project Key</Text>
+                <TextInput
+                  style={styles.projectInput}
+                  placeholder="Enter project key (e.g., PROJ)"
+                  placeholderTextColor="#888888"
+                  value={editProjectKey}
+                  onChangeText={setEditProjectKey}
+                  autoCapitalize="characters"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Description</Text>
+                <TextInput
+                  style={[styles.projectInput, styles.textArea]}
+                  placeholder="Enter project description"
+                  placeholderTextColor="#888888"
+                  value={editProjectDescription}
+                  onChangeText={setEditProjectDescription}
+                  multiline={true}
+                  numberOfLines={4}
+                />
+              </View>
+
+              <TouchableOpacity 
+                style={styles.updateButton}
+                onPress={handleUpdateProject}
+              >
+                <Text style={styles.updateButtonText}>Update Project</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1301,6 +1542,110 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   createButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  
+  // Project card enhancements
+  projectContent: {
+    flex: 1,
+  },
+  projectHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  projectMenuButton: {
+    padding: 4,
+    borderRadius: 4,
+  },
+  
+  // Project menu modal styles
+  projectMenuContainer: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 8,
+    minWidth: 150,
+    position: 'absolute',
+    top: 100,
+    right: 20,
+    elevation: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  menuOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 2,
+  },
+  menuOptionText: {
+    color: '#ffffff',
+    fontSize: 16,
+    marginLeft: 12,
+    fontWeight: '500',
+  },
+  deleteOption: {
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
+    marginTop: 4,
+  },
+  deleteOptionText: {
+    color: '#ff4444',
+  },
+  
+  // Edit project modal styles
+  editModalContainer: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 20,
+    padding: 0,
+    width: '90%',
+    maxHeight: '80%',
+    elevation: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  editModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
+  },
+  editModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  editFormContainer: {
+    padding: 20,
+  },
+  inputLabel: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+    paddingTop: 12,
+  },
+  updateButton: {
+    backgroundColor: '#ff9500',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  updateButtonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',

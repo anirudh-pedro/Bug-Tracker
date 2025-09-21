@@ -7,91 +7,106 @@ import {
   TouchableOpacity,
   FlatList,
   Dimensions,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { apiRequest } from '../utils/networkUtils';
+import auth from '@react-native-firebase/auth';
 
 const {width: screenWidth} = Dimensions.get('window');
 
 const PointsScreen = ({navigation}) => {
-  // Sample leaderboard data
-  const leaderboardData = [
-    {
-      id: 1,
-      name: 'Alex Rodriguez',
-      avatar: 'AR',
-      color: '#FF9800',
-      points: 2840,
-      bugsFixed: 24,
-      rank: 1,
-      badge: 'Bug Hunter Elite',
-      weeklyPoints: 480,
-      monthlyPoints: 1120
-    },
-    {
-      id: 2,
-      name: 'Sarah Chen',
-      avatar: 'SC',
-      color: '#4CAF50',
-      points: 2650,
-      bugsFixed: 21,
-      rank: 2,
-      badge: 'Code Ninja',
-      weeklyPoints: 320,
-      monthlyPoints: 890
-    },
-    {
-      id: 3,
-      name: 'Mike Johnson',
-      avatar: 'MJ',
-      color: '#2196F3',
-      points: 2180,
-      bugsFixed: 18,
-      rank: 3,
-      badge: 'Debug Master',
-      weeklyPoints: 290,
-      monthlyPoints: 720
-    },
-    {
-      id: 4,
-      name: 'Emma Thompson',
-      avatar: 'ET',
-      color: '#E91E63',
-      points: 1920,
-      bugsFixed: 16,
-      rank: 4,
-      badge: 'Problem Solver',
-      weeklyPoints: 250,
-      monthlyPoints: 580
-    },
-    {
-      id: 5,
-      name: 'David Kim',
-      avatar: 'DK',
-      color: '#795548',
-      points: 1650,
-      bugsFixed: 14,
-      rank: 5,
-      badge: 'Bug Squasher',
-      weeklyPoints: 180,
-      monthlyPoints: 450
-    },
-    {
-      id: 6,
-      name: 'Current User',
-      avatar: 'CU',
-      color: '#ff9500',
-      points: 1280,
-      bugsFixed: 11,
-      rank: 8,
-      badge: 'Rising Star',
-      weeklyPoints: 120,
-      monthlyPoints: 320
-    }
-  ];
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const user = auth().currentUser;
 
-  const currentUser = leaderboardData.find(user => user.name === 'Current User');
-  
+  // Load leaderboard data from API
+  useEffect(() => {
+    loadLeaderboard();
+  }, []);
+
+  const loadLeaderboard = async () => {
+    try {
+      setError(null);
+      const response = await apiRequest('/api/users/leaderboard', {
+        method: 'GET'
+      });
+
+      if (response.success && response.data) {
+        setLeaderboardData(response.data.leaderboard || []);
+        setCurrentUser(response.data.currentUser);
+        
+        // If current user not in top list, add them
+        if (!response.data.currentUser && response.data.currentUserRank) {
+          // Get current user data and add to list
+          const currentUserData = await getCurrentUserData();
+          if (currentUserData) {
+            currentUserData.rank = response.data.currentUserRank;
+            setCurrentUser(currentUserData);
+          }
+        }
+      } else {
+        setError(response.message || 'Failed to load leaderboard');
+      }
+    } catch (err) {
+      console.error('Error loading leaderboard:', err);
+      setError('Failed to load leaderboard');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const getCurrentUserData = async () => {
+    try {
+      if (!user?.uid) return null;
+      
+      const response = await apiRequest(`/api/users/stats/${user.uid}`, {
+        method: 'GET'
+      });
+
+      if (response.success && response.data) {
+        const stats = response.data.stats;
+        const nameWords = user.displayName?.split(' ') || ['User'];
+        const avatar = nameWords.length > 1 
+          ? nameWords[0].charAt(0) + nameWords[1].charAt(0)
+          : nameWords[0].charAt(0) + (nameWords[0].charAt(1) || 'U');
+
+        let badge = 'Newcomer';
+        if (stats.totalPoints >= 5000) badge = 'Legend';
+        else if (stats.totalPoints >= 3000) badge = 'Master';
+        else if (stats.totalPoints >= 2000) badge = 'Expert';
+        else if (stats.totalPoints >= 1000) badge = 'Advanced';
+        else if (stats.totalPoints >= 500) badge = 'Intermediate';
+        else if (stats.totalPoints >= 100) badge = 'Beginner';
+
+        return {
+          id: user.uid,
+          name: user.displayName || 'Current User',
+          avatar: avatar.toUpperCase(),
+          color: '#ff9500',
+          points: stats.totalPoints,
+          bugsFixed: stats.bugsResolved,
+          badge: badge,
+          weeklyPoints: Math.floor(stats.totalPoints * 0.1),
+          monthlyPoints: Math.floor(stats.totalPoints * 0.3)
+        };
+      }
+    } catch (err) {
+      console.error('Error getting current user data:', err);
+    }
+    return null;
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadLeaderboard();
+  };
   const getDisplayData = () => {
     return leaderboardData.sort((a, b) => b.points - a.points);
   };
@@ -113,8 +128,8 @@ const PointsScreen = ({navigation}) => {
   };
 
   const renderLeaderboardItem = ({item, index}) => {
-    const isCurrentUser = item.name === 'Current User';
-    const displayRank = index + 1;
+    const isCurrentUser = currentUser && item.id.toString() === currentUser.id.toString();
+    const displayRank = item.rank || (index + 1);
     
     return (
       <View style={[styles.leaderboardItem, isCurrentUser && styles.currentUserItem]}>
@@ -152,6 +167,53 @@ const PointsScreen = ({navigation}) => {
     );
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-back" size={24} color="#ffffff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Leaderboard</Text>
+          <View style={styles.headerRight} />
+        </View>
+        
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#ff9500" />
+          <Text style={styles.loadingText}>Loading leaderboard...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-back" size={24} color="#ffffff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Leaderboard</Text>
+          <View style={styles.headerRight} />
+        </View>
+        
+        <View style={styles.errorContainer}>
+          <Icon name="error-outline" size={48} color="#ff6b6b" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadLeaderboard}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -167,34 +229,36 @@ const PointsScreen = ({navigation}) => {
       </View>
 
       {/* Current User Stats */}
-      <View style={styles.currentUserCard}>
-        <View style={styles.currentUserHeader}>
-          <View style={[styles.currentUserAvatar, {backgroundColor: currentUser.color}]}>
-            <Text style={styles.currentUserAvatarText}>{currentUser.avatar}</Text>
+      {currentUser && (
+        <View style={styles.currentUserCard}>
+          <View style={styles.currentUserHeader}>
+            <View style={[styles.currentUserAvatar, {backgroundColor: currentUser.color}]}>
+              <Text style={styles.currentUserAvatarText}>{currentUser.avatar}</Text>
+            </View>
+            <View style={styles.currentUserInfo}>
+              <Text style={styles.currentUserName}>{currentUser.name}</Text>
+              <Text style={styles.currentUserBadge}>{currentUser.badge}</Text>
+            </View>
           </View>
-          <View style={styles.currentUserInfo}>
-            <Text style={styles.currentUserName}>{currentUser.name}</Text>
-            <Text style={styles.currentUserBadge}>{currentUser.badge}</Text>
+          
+          <View style={styles.currentUserStats}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{currentUser.points.toLocaleString()}</Text>
+              <Text style={styles.statLabel}>Total Points</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{currentUser.rank}{getRankSuffix(currentUser.rank)}</Text>
+              <Text style={styles.statLabel}>Global Rank</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{currentUser.bugsFixed}</Text>
+              <Text style={styles.statLabel}>Bugs Fixed</Text>
+            </View>
           </View>
         </View>
-        
-        <View style={styles.currentUserStats}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{currentUser.points.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Total Points</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{currentUser.rank}{getRankSuffix(currentUser.rank)}</Text>
-            <Text style={styles.statLabel}>Global Rank</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{currentUser.bugsFixed}</Text>
-            <Text style={styles.statLabel}>Bugs Fixed</Text>
-          </View>
-        </View>
-      </View>
+      )}
 
       {/* Leaderboard List */}
       <FlatList
@@ -204,6 +268,14 @@ const PointsScreen = ({navigation}) => {
         style={styles.list}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#ff9500"
+            colors={['#ff9500']}
+          />
+        }
       />
     </SafeAreaView>
   );
@@ -373,6 +445,42 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#888888',
     marginTop: 2,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#888888',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#ff6b6b',
+    marginTop: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: '#ff9500',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

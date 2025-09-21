@@ -4,10 +4,11 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {TouchableOpacity, View, Text} from 'react-native';
 import auth from '@react-native-firebase/auth';
+import { getApp } from '@react-native-firebase/app';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiRequest } from './src/utils/networkUtils';
+import { apiRequest } from './src/utils/enhancedNetworkUtils';
 
 // Import screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -246,7 +247,8 @@ const App = () => {
   useEffect(() => {
     console.log('🚀 App initialization started');
     
-    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
+    const app = getApp();
+    const unsubscribe = auth(app).onAuthStateChanged(async (firebaseUser) => {
       console.log('🔥 Firebase auth state changed:', firebaseUser ? firebaseUser.email : 'logged out');
       
       if (firebaseUser) {
@@ -291,7 +293,7 @@ const App = () => {
       
       if (!token) {
         console.log('❌ No authentication token found after waiting - forcing re-authentication');
-        await auth().signOut();
+        await auth(getApp()).signOut();
         return;
       }
 
@@ -350,7 +352,7 @@ const App = () => {
         
         if (response.authError) {
           console.log('🔄 Invalid authentication token - signing out user');
-          await auth().signOut();
+          await auth(getApp()).signOut();
         } else {
           // On error, default to GetStarted page for safety (assume new user)
           console.log('⚠️ Defaulting to GetStarted page due to error');

@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
-import { apiRequest } from '../utils/networkUtils';
+import { apiRequest } from '../utils/enhancedNetworkUtils';
 
 const UserProfileScreen = ({ route, navigation }) => {
   console.log('UserProfileScreen received route.params:', route.params);

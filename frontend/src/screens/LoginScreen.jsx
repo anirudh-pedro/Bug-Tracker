@@ -13,7 +13,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
-import { apiRequest } from '../utils/networkUtils';
+import { apiRequest } from '../utils/enhancedNetworkUtils';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AntDesign from 'react-native-vector-icons/AntDesign';
@@ -153,33 +153,33 @@ const LoginScreen = ({ navigation }) => {
 
       if (response.success) {
         console.log('✅ Backend authentication successful');
-        console.log('🔍 User needs onboarding:', response.requiresOnboarding);
-        console.log('🔍 Is new user:', response.isNewUser);
+        console.log('🔍 User needs onboarding:', response.data.requiresOnboarding);
+        console.log('🔍 Is new user:', response.data.isNewUser);
         
         // Clear any existing token first to avoid conflicts
         await AsyncStorage.removeItem('userToken');
         console.log('🧹 Cleared old token from AsyncStorage');
         
         // Store new token in AsyncStorage for future use
-        if (response.token) {
-          await AsyncStorage.setItem('userToken', response.token);
+        if (response.data.token) {
+          await AsyncStorage.setItem('userToken', response.data.token);
           console.log('💾 New token stored in AsyncStorage');
-          console.log('🎫 New token preview:', response.token.substring(0, 30) + '...');
+          console.log('🎫 New token preview:', response.data.token.substring(0, 30) + '...');
         }
 
         // Store user data in AsyncStorage with both Firebase UID and backend user ID
-        if (response.user) {
+        if (response.data.user) {
           const userData = {
             uid: userCredential.user.uid, // Firebase UID
-            id: response.user.id, // Backend user ID
-            username: response.user.username,
-            name: response.user.name,
-            email: response.user.email,
-            avatar: response.user.avatar,
-            industry: response.user.industry,
-            phoneNumber: response.user.phoneNumber,
-            role: response.user.role,
-            onboardingCompleted: response.user.hasCompletedOnboarding
+            id: response.data.user.id, // Backend user ID
+            username: response.data.user.username,
+            name: response.data.user.name,
+            email: response.data.user.email,
+            avatar: response.data.user.avatar,
+            industry: response.data.user.industry,
+            phoneNumber: response.data.user.phoneNumber,
+            role: response.data.user.role,
+            onboardingCompleted: response.data.user.hasCompletedOnboarding
           };
           
           await AsyncStorage.setItem(`user_data_${userCredential.user.uid}`, JSON.stringify(userData));

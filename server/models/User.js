@@ -155,8 +155,62 @@ const userSchema = new mongoose.Schema({
       type: Number,
       default: 0,
       min: 0
+    },
+    breakdown: {
+      bugsReported: {
+        type: Number,
+        default: 0,
+        min: 0
+      },
+      bugsResolved: {
+        type: Number,
+        default: 0,
+        min: 0
+      },
+      comments: {
+        type: Number,
+        default: 0,
+        min: 0
+      },
+      contributions: {
+        type: Number,
+        default: 0,
+        min: 0
+      }
     }
   },
+  
+  // Points history for tracking all point transactions
+  pointsHistory: [{
+    points: {
+      type: Number,
+      required: true
+    },
+    reason: {
+      type: String,
+      required: true
+    },
+    bugId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Bug'
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
+    awardedAt: {
+      type: Date,
+      default: Date.now
+    },
+    previousTotal: {
+      type: Number,
+      required: true
+    },
+    newTotal: {
+      type: Number,
+      required: true
+    }
+  }],
   achievements: [{
     type: {
       type: String,

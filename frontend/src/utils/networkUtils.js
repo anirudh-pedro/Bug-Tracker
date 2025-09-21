@@ -17,9 +17,9 @@ export const testServerConnectivity = async () => {
       const timeoutId = setTimeout(() => {
         console.log(`⏰ Connectivity test timeout for ${url}`);
         controller.abort();
-      }, 8000); // 8 second timeout for connectivity test
+      }, 5000); // Reduced to 5 second timeout for connectivity test
       
-      const response = await fetch(`${url}/api/users/debug-public`, {
+      const response = await fetch(`${url}/api/health`, {
         method: 'GET',
         signal: controller.signal,
         headers: {

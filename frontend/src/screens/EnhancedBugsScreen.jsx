@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { apiRequest } from '../utils/networkUtils';
+import { apiRequest } from '../utils/enhancedNetworkUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const {width: screenWidth} = Dimensions.get('window');

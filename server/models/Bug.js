@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { generateBugId } = require('../utils/bugIdGenerator');
 
 const bugSchema = new mongoose.Schema({
   title: {
@@ -266,16 +267,50 @@ const bugSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  // Legacy field for backward compatibility
   pointsAwarded: {
     type: Number,
     default: 0,
     min: 0
   },
+  // Legacy field for backward compatibility
   awardedTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  // Legacy field for backward compatibility
   pointsAwardedAt: Date,
+  
+  // New enhanced points tracking system
+  pointsAwarded: [{
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    points: {
+      type: Number,
+      required: true,
+      min: 1
+    },
+    reason: {
+      type: String,
+      required: true,
+      enum: ['bug_reported', 'bug_resolved', 'comment_helpful', 'contribution', 'custom']
+    },
+    awardedAt: {
+      type: Date,
+      default: Date.now
+    },
+    awardedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    }
+  }],
   
   // Resolution tracking
   resolvedBy: {
@@ -315,33 +350,29 @@ bugSchema.index({ bountyPoints: -1 });
 bugSchema.index({ 'githubRepo.owner': 1, 'githubRepo.name': 1 });
 bugSchema.index({ 'project': 1, 'status': 1 });
 
-// Generate bug ID before saving
+// Generate bug ID before saving with atomic counter
 bugSchema.pre('save', async function(next) {
   if (this.isNew && !this.bugId) {
     try {
       // Get project to use its key
       const Project = mongoose.model('Project');
-      const project = await Project.findById(this.project);
+      let projectKey = 'DEFAULT';
       
-      if (project) {
-        // Find the highest bug number for this project
-        const lastBug = await this.constructor
-          .findOne({ project: this.project })
-          .sort({ createdAt: -1 })
-          .select('bugId');
-        
-        let bugNumber = 1;
-        if (lastBug && lastBug.bugId) {
-          const match = lastBug.bugId.match(/-(\d+)$/);
-          if (match) {
-            bugNumber = parseInt(match[1]) + 1;
-          }
+      if (this.project) {
+        const project = await Project.findById(this.project);
+        if (project && project.key) {
+          projectKey = project.key;
         }
-        
-        this.bugId = `${project.key}-${bugNumber.toString().padStart(3, '0')}`;
       }
+      
+      // Generate atomic bug ID
+      this.bugId = await generateBugId(projectKey);
+      
     } catch (error) {
       console.error('Error generating bug ID:', error);
+      // Fallback to timestamp-based ID
+      const timestamp = Date.now().toString().slice(-6);
+      this.bugId = `BUG-${timestamp}`;
     }
   }
   next();

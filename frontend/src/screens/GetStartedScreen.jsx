@@ -3,17 +3,20 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   TextInput,
   Image,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
-import { apiRequest } from '../utils/networkUtils';
+import { apiRequest } from '../utils/enhancedNetworkUtils';
 import { AUTH_CONFIG } from '../config/authConfig';
 
 const GetStartedScreen = ({ navigation, route }) => {
@@ -303,10 +306,9 @@ const GetStartedScreen = ({ navigation, route }) => {
         body: JSON.stringify({ username: username.trim() }),
       });
 
-      const finalCheckData = await finalUsernameCheck.json();
-      console.log('🔍 Final username check result:', finalCheckData);
+      console.log('🔍 Final username check result:', finalUsernameCheck);
 
-      if (!finalCheckData.available) {
+      if (!finalUsernameCheck.available) {
         console.log('❌ Username no longer available');
         Alert.alert('Username Taken', 'This username is no longer available. Please choose another one.');
         setUsernameAvailable(false);
@@ -403,9 +405,15 @@ const GetStartedScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header with Back Button */}
-      <View style={styles.header}>
+    <>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="#000000" 
+        translucent={false}
+      />
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {/* Header with Back Button */}
+        <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
           onPress={handleLogout}
@@ -416,7 +424,17 @@ const GetStartedScreen = ({ navigation, route }) => {
         <View style={styles.headerSpacer} />
       </View>
       
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollViewContent}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Header Illustration */}
         <View style={styles.illustrationContainer}>
           <View style={styles.illustrationBackground}>
@@ -562,7 +580,7 @@ const GetStartedScreen = ({ navigation, route }) => {
           </View>
 
           {/* GitHub URL Input */}
-          <View style={styles.inputGroup}>
+          <View style={[styles.inputGroup, styles.lastInputGroup]}>
             <Text style={styles.label}>
               GitHub URL <Text style={styles.required}>*</Text>
             </Text>
@@ -617,7 +635,9 @@ const GetStartedScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
+    </>
   );
 };
 
@@ -626,12 +646,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 16,
     backgroundColor: '#1a1a1a',
     borderBottomWidth: 1,
     borderBottomColor: '#333333',
@@ -652,6 +676,13 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingBottom: 50, // Extra space at bottom for keyboard
   },
   illustrationContainer: {
     alignItems: 'center',
@@ -802,12 +833,16 @@ const styles = StyleSheet.create({
   formContainer: {
     paddingHorizontal: 30,
     paddingVertical: 20,
+    paddingBottom: 40, // Extra space for keyboard
   },
   disabledForm: {
     opacity: 0.6,
   },
   inputGroup: {
     marginBottom: 30,
+  },
+  lastInputGroup: {
+    marginBottom: 50, // Extra space for the last input (GitHub URL)
   },
   label: {
     fontSize: 16,

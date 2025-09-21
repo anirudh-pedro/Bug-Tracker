@@ -1,6 +1,13 @@
 const User = require('../models/User');
 const { generateToken } = require('../middleware/auth');
 const { OAuth2Client } = require('google-auth-library');
+const {
+  standardizeUserReference,
+  standardizePoints,
+  standardizeDate,
+  createSuccessResponse,
+  createErrorResponse
+} = require('../utils/responseStandardizer');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 console.log('🔧 Google Client ID configured:', GOOGLE_CLIENT_ID ? 'YES' : 'NO');
@@ -84,23 +91,25 @@ const googleAuth = async (req, res) => {
       hasCompletedOnboarding: user.hasCompletedOnboarding
     });
 
-    const responseData = {
-      success: true,
+    const responseData = createSuccessResponse({
       token,
-      isNewUser,
-      requiresOnboarding,
+      isNewUser: Boolean(isNewUser),
+      requiresOnboarding: Boolean(requiresOnboarding),
       user: {
-        id: user._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar,
-        role: user.role,
-        industry: user.industry,
-        phoneNumber: user.phoneNumber,
-        hasCompletedOnboarding: user.hasCompletedOnboarding
+        id: user._id.toString(),
+        name: user.name || '',
+        username: user.username || null,
+        email: user.email || '',
+        avatar: user.avatar || '',
+        role: user.role || 'developer',
+        industry: user.industry || null,
+        phoneNumber: user.phoneNumber || null,
+        hasCompletedOnboarding: Boolean(user.hasCompletedOnboarding),
+        points: standardizePoints(user.points),
+        createdAt: standardizeDate(user.createdAt),
+        lastLoginAt: standardizeDate(user.lastLoginAt)
       }
-    };
+    }, 'Authentication successful');
     
     console.log('📤 Sending response:', {
       isNewUser,
@@ -128,11 +137,11 @@ const googleAuth = async (req, res) => {
       errorMessage = 'Token audience mismatch. Please check configuration.';
     }
     
-    res.status(401).json({ 
-      success: false, 
-      message: errorMessage,
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    res.status(401).json(createErrorResponse(
+      errorMessage,
+      process.env.NODE_ENV === 'development' ? error.message : undefined,
+      401
+    ));
   }
 };
 
@@ -144,22 +153,40 @@ const getCurrentUser = async (req, res) => {
     const user = await User.findById(req.user.id).select('-googleId -__v');
     
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return res.status(404).json(createErrorResponse(
+        'User not found',
+        null,
+        404
+      ));
     }
 
-    res.json({
-      success: true,
-      data: user
-    });
+    const standardizedUser = {
+      id: user._id.toString(),
+      name: user.name || '',
+      username: user.username || null,
+      email: user.email || '',
+      avatar: user.avatar || '',
+      role: user.role || 'developer',
+      industry: user.industry || null,
+      phoneNumber: user.phoneNumber || null,
+      hasCompletedOnboarding: Boolean(user.hasCompletedOnboarding),
+      points: standardizePoints(user.points),
+      createdAt: standardizeDate(user.createdAt),
+      lastLoginAt: standardizeDate(user.lastLoginAt),
+      isActive: Boolean(user.isActive)
+    };
+
+    res.json(createSuccessResponse(
+      standardizedUser,
+      'User retrieved successfully'
+    ));
   } catch (error) {
     console.error('Get current user error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching user'
-    });
+    res.status(500).json(createErrorResponse(
+      'Server error while fetching user',
+      process.env.NODE_ENV === 'development' ? error.message : null,
+      500
+    ));
   }
 };
 
@@ -171,24 +198,26 @@ const refreshToken = async (req, res) => {
     const user = await User.findById(req.user.id);
     
     if (!user || !user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not found or inactive'
-      });
+      return res.status(401).json(createErrorResponse(
+        'User not found or inactive',
+        null,
+        401
+      ));
     }
 
     const token = generateToken(user._id);
 
-    res.json({
-      success: true,
-      token
-    });
+    res.json(createSuccessResponse(
+      { token },
+      'Token refreshed successfully'
+    ));
   } catch (error) {
     console.error('Refresh token error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while refreshing token'
-    });
+    res.status(500).json(createErrorResponse(
+      'Server error while refreshing token',
+      process.env.NODE_ENV === 'development' ? error.message : null,
+      500
+    ));
   }
 };
 

@@ -77,4 +77,87 @@ router.get('/', authenticate, async (req, res) => {
 	}
 });
 
+// Update a project (only owner can update)
+router.put('/:id', authenticate, async (req, res) => {
+	try {
+		const { name, description, key, priority, status } = req.body;
+		
+		// Find the project and check ownership
+		const project = await Project.findById(req.params.id);
+		if (!project) {
+			return res.status(404).json({ success: false, message: 'Project not found' });
+		}
+		
+		// Check if user is the owner
+		if (project.owner.toString() !== req.user._id.toString()) {
+			return res.status(403).json({ success: false, message: 'Only project owner can update the project' });
+		}
+		
+		// If updating key, check if it's unique (excluding current project)
+		if (key && key.toUpperCase() !== project.key) {
+			const existingProject = await Project.findOne({ 
+				key: key.toUpperCase(),
+				_id: { $ne: req.params.id }
+			});
+			if (existingProject) {
+				return res.status(400).json({ success: false, message: 'Project key already exists' });
+			}
+		}
+		
+		// Update fields
+		if (name) project.name = name;
+		if (description) project.description = description;
+		if (key) project.key = key.toUpperCase();
+		if (priority) project.priority = priority;
+		if (status) project.status = status;
+		
+		await project.save();
+		
+		// Return populated project
+		const updatedProject = await Project.findById(project._id)
+			.populate('owner', 'name email')
+			.populate('members.user', 'name email');
+		
+		res.json({ success: true, data: { project: updatedProject } });
+	} catch (error) {
+		console.error('Update project error:', error);
+		res.status(500).json({ success: false, message: error.message });
+	}
+});
+
+// Delete a project (only owner can delete)
+router.delete('/:id', authenticate, async (req, res) => {
+	try {
+		// Find the project and check ownership
+		const project = await Project.findById(req.params.id);
+		if (!project) {
+			return res.status(404).json({ success: false, message: 'Project not found' });
+		}
+		
+		// Check if user is the owner
+		if (project.owner.toString() !== req.user._id.toString()) {
+			return res.status(403).json({ success: false, message: 'Only project owner can delete the project' });
+		}
+		
+		// Delete associated bugs first (optional - or you might want to prevent deletion if bugs exist)
+		const Bug = require('../models/Bug');
+		const bugCount = await Bug.countDocuments({ project: project._id });
+		
+		if (bugCount > 0) {
+			return res.status(400).json({ 
+				success: false, 
+				message: `Cannot delete project with ${bugCount} associated bugs. Please resolve or transfer bugs first.` 
+			});
+		}
+		
+		// Delete the project
+		await Project.findByIdAndDelete(req.params.id);
+		
+		res.json({ success: true, message: 'Project deleted successfully' });
+	} catch (error) {
+		console.error('Delete project error:', error);
+		res.status(500).json({ success: false, message: error.message });
+	}
+});
+
 module.exports = router;

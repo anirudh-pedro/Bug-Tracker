@@ -1,9 +1,15 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { findUserByIdOrGoogleId, validateUserIdentifier } = require('../utils/userUtils');
 
 // JWT Secret (should be in environment variable)
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-here';
 const JWT_EXPIRE = process.env.JWT_EXPIRE || '30d';
+
+// Validate JWT Secret in production
+if (process.env.NODE_ENV === 'production' && JWT_SECRET === 'your-super-secret-jwt-key-here') {
+  throw new Error('Production environment requires a strong JWT_SECRET environment variable');
+}
 
 // Generate JWT Token
 const generateToken = (userId) => {
@@ -26,25 +32,31 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    // Development mode: Allow mock tokens
-    if (token === 'mock-jwt-token-for-development') {
-      console.log('🧪 Using mock token for development');
-      req.user = {
-        _id: 'mock-user-id',
-        id: 'mock-user-id',
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        role: 'developer',
-        projects: []
-      };
-      return next();
+    // Validate token format (basic checks)
+    if (token.length < 10) {
+      console.log('❌ Invalid token format: too short');
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token format.'
+      });
     }
 
     console.log('🔍 Verifying JWT token...');
     const decoded = jwt.verify(token, JWT_SECRET);
     console.log('✅ JWT decoded successfully:', { userId: decoded.userId });
     
-    const user = await User.findById(decoded.userId).select('-googleId -__v');
+    // Validate user identifier format
+    const validation = validateUserIdentifier(decoded.userId);
+    if (!validation.valid) {
+      console.log('❌ Invalid user identifier in token:', validation.error);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token: malformed user identifier.'
+      });
+    }
+    
+    // Use unified user lookup
+    const user = await findUserByIdOrGoogleId(decoded.userId);
     console.log('🔍 User lookup result:', user ? { id: user._id, email: user.email } : 'USER NOT FOUND');
     
     if (!user) {
