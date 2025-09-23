@@ -14,7 +14,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
-import { apiRequest } from '../utils/networkUtils';
+import { apiRequest } from '../utils/enhancedNetworkUtils';
 
 const ProfileSettingsScreen = ({ navigation }) => {
   const user = auth().currentUser;
@@ -22,7 +22,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [originalUsername, setOriginalUsername] = useState('');
   const [name, setName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
   const [industry, setIndustry] = useState('');
   const [usernameAvailable, setUsernameAvailable] = useState(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
@@ -54,7 +54,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
             setUsername(parsedData.username || '');
             setOriginalUsername(parsedData.username || '');
             setName(parsedData.name || user.displayName || '');
-            setPhoneNumber(parsedData.phoneNumber || '');
+            setGithubUrl(parsedData.githubUrl || '');
             setIndustry(parsedData.industry || '');
           } else {
             // Fallback to Firebase data
@@ -107,6 +107,16 @@ const ProfileSettingsScreen = ({ navigation }) => {
     checkUsernameAvailability(text);
   };
 
+  // GitHub URL validation
+  const validateGithubUrl = (url) => {
+    if (!url.trim()) {
+      return true; // GitHub URL is optional
+    }
+    
+    const githubUrlPattern = /^https?:\/\/(www\.)?github\.com\/[a-zA-Z0-9-_]+\/?$/;
+    return githubUrlPattern.test(url.trim());
+  };
+
   // Check username availability
   const checkUsernameAvailability = async (usernameToCheck) => {
     if (!usernameToCheck || usernameToCheck === originalUsername) return;
@@ -154,6 +164,16 @@ const ProfileSettingsScreen = ({ navigation }) => {
       return;
     }
 
+    if (githubUrl.trim() && !validateGithubUrl(githubUrl)) {
+      Alert.alert('Error', 'Please enter a valid GitHub URL (e.g., https://github.com/username)');
+      return;
+    }
+
+    if (githubUrl.trim() && !validateGithubUrl(githubUrl)) {
+      Alert.alert('Error', 'Please enter a valid GitHub URL (e.g., https://github.com/username)');
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await apiRequest('/api/users/update-profile', {
@@ -161,7 +181,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
         body: JSON.stringify({
           username: username.trim(),
           name: name.trim(),
-          phoneNumber: phoneNumber.trim(),
+          githubUrl: githubUrl.trim(),
           industry: industry
         })
       });
@@ -176,7 +196,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
           email: response.data.user.email,
           avatar: response.data.user.avatar,
           industry: response.data.user.industry,
-          phoneNumber: response.data.user.phoneNumber,
+          githubUrl: response.data.user.githubUrl,
           role: response.data.user.role,
           onboardingCompleted: response.data.user.onboardingCompleted
         };
@@ -321,16 +341,18 @@ const ProfileSettingsScreen = ({ navigation }) => {
               />
             </View>
 
-            {/* Phone Number Field */}
+            {/* GitHub URL Field */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Phone Number</Text>
+              <Text style={styles.label}>GitHub URL</Text>
               <TextInput
                 style={styles.input}
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                placeholder="Enter your phone number"
+                value={githubUrl}
+                onChangeText={setGithubUrl}
+                placeholder="Enter your GitHub profile URL"
                 placeholderTextColor="#666"
-                keyboardType="phone-pad"
+                keyboardType="url"
+                autoCapitalize="none"
+                autoCorrect={false}
               />
             </View>
 
@@ -508,8 +530,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   industryOptionSelected: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: '#ff9500',
+    borderColor: '#ff9500',
   },
   industryOptionText: {
     fontSize: 14,
@@ -520,7 +542,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   saveButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#ff9500',
     borderRadius: 12,
     paddingVertical: 16,
     flexDirection: 'row',

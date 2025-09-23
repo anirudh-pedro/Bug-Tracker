@@ -14,22 +14,26 @@ import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiRequest } from '../utils/enhancedNetworkUtils';
 
-const ProfileScreen = () => {
+const ProfileScreen = ({ navigation }) => {
   const user = auth().currentUser;
   const [userProfile, setUserProfile] = useState({
     username: '',
     name: '',
     industry: '',
-    phoneNumber: '',
+    githubUrl: '',
     role: ''
   });
+  const [loading, setLoading] = useState(true);
 
-  // Load user profile data from AsyncStorage
+  // Load user profile data from both AsyncStorage and API
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
+        setLoading(true);
         if (user?.uid) {
+          // First try to load from AsyncStorage for quick display
           const userData = await AsyncStorage.getItem(`user_data_${user.uid}`);
           if (userData) {
             const parsedData = JSON.parse(userData);
@@ -37,13 +41,39 @@ const ProfileScreen = () => {
               username: parsedData.username || '',
               name: parsedData.name || user.displayName || '',
               industry: parsedData.industry || '',
-              phoneNumber: parsedData.phoneNumber || '',
+              githubUrl: parsedData.githubUrl || '',
               role: parsedData.role || 'developer'
             });
+          }
+
+          // Then fetch fresh data from API
+          try {
+            const response = await apiRequest('/api/users/profile', {
+              method: 'GET'
+            });
+            
+            if (response.success && response.data) {
+              const profileData = {
+                username: response.data.username || '',
+                name: response.data.name || user.displayName || '',
+                industry: response.data.industry || '',
+                githubUrl: response.data.githubUrl || '',
+                role: response.data.role || 'developer'
+              };
+              setUserProfile(profileData);
+              
+              // Update AsyncStorage with fresh data
+              await AsyncStorage.setItem(`user_data_${user.uid}`, JSON.stringify(profileData));
+            }
+          } catch (apiError) {
+            console.log('API profile fetch failed, using cached data:', apiError);
+            // Continue with AsyncStorage data if API fails
           }
         }
       } catch (error) {
         console.error('Error loading user profile:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -123,9 +153,24 @@ const ProfileScreen = () => {
               {user.email || 'No email available'}
             </Text>
 
+            {userProfile.githubUrl && (
+              <TouchableOpacity 
+                style={styles.githubLinkContainer}
+                onPress={() => {
+                  // You could open the GitHub URL here if needed
+                  console.log('GitHub URL:', userProfile.githubUrl);
+                }}
+              >
+                <Icon name="link" size={16} color="#ff9500" />
+                <Text style={styles.userGithub}>
+                  {userProfile.githubUrl}
+                </Text>
+              </TouchableOpacity>
+            )}
+
             {userProfile.industry && (
               <Text style={styles.userIndustry}>
-                {userProfile.industry}
+                🏢 {userProfile.industry}
               </Text>
             )}
 
@@ -150,6 +195,15 @@ const ProfileScreen = () => {
                 {user.emailVerified ? 'Verified Account' : 'Unverified Account'}
               </Text>
             </View>
+
+            {/* Edit Profile Button */}
+            <TouchableOpacity 
+              style={styles.editProfileButton}
+              onPress={() => navigation.navigate('ProfileSettings')}
+            >
+              <Icon name="edit" size={20} color="#ff9500" />
+              <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+            </TouchableOpacity>
           </View>
 
           {/* User Stats */}
@@ -396,6 +450,50 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     fontSize: 16,
     fontWeight: '600',
+  },
+  userPhone: {
+    fontSize: 14,
+    color: '#a0a0a0',
+    marginBottom: 8,
+    textAlign: 'center',
+    fontFamily: 'monospace',
+  },
+  githubLinkContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 149, 0, 0.1)',
+    borderColor: '#ff9500',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginBottom: 8,
+    alignSelf: 'center',
+  },
+  userGithub: {
+    fontSize: 12,
+    color: '#ff9500',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  editProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 149, 0, 0.1)',
+    borderColor: '#ff9500',
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 12,
+    alignSelf: 'center',
+  },
+  editProfileButtonText: {
+    color: '#ff9500',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
   },
   errorText: {
     fontSize: 18,

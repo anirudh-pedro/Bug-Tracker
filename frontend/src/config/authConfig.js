@@ -1,13 +1,13 @@
 // Auth Configuration
 export const AUTH_CONFIG = {
-  // Backend endpoints - for USB-connected physical device
+  // Backend endpoints - for WiFi connected device  
   BACKEND_URL: __DEV__ 
-    ? 'http://10.35.27.115:5000' // Your laptop's current IP address
+    ? 'http://192.168.137.118:5000' // Working WiFi IP
     : 'https://your-production-api.com',
   
   // Fallback URLs for connectivity issues
   FALLBACK_URLS: __DEV__ 
-    ? ['http://10.35.27.115:5000', 'http://localhost:5000', 'http://127.0.0.1:5000', 'http://10.0.2.2:5000', 'http://192.168.137.1:5000']
+    ? ['http://192.168.137.118:5000', 'http://localhost:5000', 'http://10.0.2.2:5000', 'http://172.31.80.1:5000']
     : [],
   
   // Google Sign-In

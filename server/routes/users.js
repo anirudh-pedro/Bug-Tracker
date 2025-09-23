@@ -75,6 +75,15 @@ router.put('/update-profile', authenticate, updateProfile);
 // @access  Private
 router.get('/profile-status', authenticate, getProfileStatus);
 
+// @desc    Get current user's profile
+// @route   GET /api/users/profile
+// @access  Private
+router.get('/profile', authenticate, (req, res) => {
+  // Reuse the getUserProfile function with current user's ID
+  req.params.userId = req.user._id.toString();
+  getUserProfile(req, res);
+});
+
 // @desc    Search users by name for mentions
 // @route   GET /api/users/search
 // @access  Private
