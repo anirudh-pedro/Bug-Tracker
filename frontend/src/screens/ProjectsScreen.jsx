@@ -9,6 +9,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -22,6 +23,13 @@ const ProjectsScreen = ({navigation}) => {
   const [filteredProjects, setFilteredProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Edit/Delete modal states
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [editedProjectName, setEditedProjectName] = useState('');
+  const [editedProjectDescription, setEditedProjectDescription] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -126,6 +134,85 @@ const ProjectsScreen = ({navigation}) => {
     if (diffDays < 7) return `${diffDays} days ago`;
     if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
     return `${Math.ceil(diffDays / 30)} months ago`;
+  };
+
+  // Edit project handler
+  const handleEditProject = (project) => {
+    setSelectedProject(project);
+    setEditedProjectName(project.name);
+    setEditedProjectDescription(project.description);
+    setEditModalVisible(true);
+  };
+
+  // Delete project handler
+  const handleDeleteProject = (project) => {
+    Alert.alert(
+      'Delete Project',
+      `Are you sure you want to delete "${project.name}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => confirmDeleteProject(project._id)
+        }
+      ]
+    );
+  };
+
+  // Confirm delete project
+  const confirmDeleteProject = async (projectId) => {
+    try {
+      console.log('🗑️ Deleting project:', projectId);
+      
+      const response = await apiRequest(`/api/projects/${projectId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.success) {
+        Alert.alert('Success', 'Project deleted successfully');
+        loadProjects(); // Reload the projects list
+      } else {
+        Alert.alert('Error', response.message || 'Failed to delete project');
+      }
+    } catch (error) {
+      console.error('❌ Delete project error:', error);
+      Alert.alert('Error', 'Failed to delete project. Please try again.');
+    }
+  };
+
+  // Save edited project
+  const handleSaveEditedProject = async () => {
+    if (!editedProjectName.trim()) {
+      Alert.alert('Error', 'Project name is required');
+      return;
+    }
+
+    try {
+      setEditLoading(true);
+      console.log('✏️ Updating project:', selectedProject._id);
+      
+      const response = await apiRequest(`/api/projects/${selectedProject._id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: editedProjectName.trim(),
+          description: editedProjectDescription.trim()
+        })
+      });
+
+      if (response.success) {
+        Alert.alert('Success', 'Project updated successfully');
+        setEditModalVisible(false);
+        loadProjects(); // Reload the projects list
+      } else {
+        Alert.alert('Error', response.message || 'Failed to update project');
+      }
+    } catch (error) {
+      console.error('❌ Update project error:', error);
+      Alert.alert('Error', 'Failed to update project. Please try again.');
+    } finally {
+      setEditLoading(false);
+    }
   };
 
   return (
@@ -234,28 +321,28 @@ const ProjectsScreen = ({navigation}) => {
                   </View>
                 ) : (
                   filteredProjects.map((project) => (
-                    <TouchableOpacity 
-                      key={project._id} 
-                      style={styles.projectCard}
-                      onPress={() => navigation.navigate('Bugs', { 
-                        projectId: project._id, 
-                        projectName: project.name 
-                      })}
-                    >
-                      <View style={styles.projectHeader}>
-                        <View style={styles.projectTitleRow}>
-                          <Text style={styles.projectName}>{project.name}</Text>
-                          <View style={[
-                            styles.statusBadge,
-                            { backgroundColor: getStatusColor(project.status) }
-                          ]}>
-                            <Text style={styles.statusText}>
-                              {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
-                            </Text>
+                    <View key={project._id} style={styles.projectCard}>
+                      <TouchableOpacity 
+                        style={styles.projectContent}
+                        onPress={() => navigation.navigate('ProjectDetail', { 
+                          projectId: project._id, 
+                          projectName: project.name 
+                        })}
+                      >
+                        <View style={styles.projectHeader}>
+                          <View style={styles.projectTitleRow}>
+                            <Text style={styles.projectName}>{project.name}</Text>
+                            <View style={[
+                              styles.statusBadge,
+                              { backgroundColor: getStatusColor(project.status) }
+                            ]}>
+                              <Text style={styles.statusText}>
+                                {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+                              </Text>
+                            </View>
                           </View>
+                          <Text style={styles.projectKey}>#{project.key}</Text>
                         </View>
-                        <Text style={styles.projectKey}>#{project.key}</Text>
-                      </View>
 
                       <Text style={styles.projectDescription} numberOfLines={2}>
                         {project.description}
@@ -282,7 +369,24 @@ const ProjectsScreen = ({navigation}) => {
                           </Text>
                         </View>
                       </View>
-                    </TouchableOpacity>
+                      </TouchableOpacity>
+                      
+                      {/* Action buttons */}
+                      <View style={styles.actionButtons}>
+                        <TouchableOpacity 
+                          style={styles.editButton}
+                          onPress={() => handleEditProject(project)}
+                        >
+                          <Icon name="edit" size={18} color="#667eea" />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.deleteButton}
+                          onPress={() => handleDeleteProject(project)}
+                        >
+                          <Icon name="delete" size={18} color="#ff6b6b" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   ))
                 )}
               </View>
@@ -290,6 +394,75 @@ const ProjectsScreen = ({navigation}) => {
           )}
         </ScrollView>
       </SafeAreaView>
+
+      {/* Edit Project Modal */}
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Project</Text>
+              <TouchableOpacity 
+                onPress={() => setEditModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Icon name="close" size={24} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalContent}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Project Name</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  value={editedProjectName}
+                  onChangeText={setEditedProjectName}
+                  placeholder="Enter project name"
+                  placeholderTextColor="#666666"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Description</Text>
+                <TextInput
+                  style={[styles.modalTextInput, styles.textArea]}
+                  value={editedProjectDescription}
+                  onChangeText={setEditedProjectDescription}
+                  placeholder="Enter project description"
+                  placeholderTextColor="#666666"
+                  multiline={true}
+                  numberOfLines={4}
+                />
+              </View>
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => setEditModalVisible(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.saveButton, editLoading && styles.disabledButton]}
+                  onPress={handleSaveEditedProject}
+                  disabled={editLoading}
+                >
+                  {editLoading ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save Changes</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -570,6 +743,124 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  
+  // New styles for edit/delete functionality
+  projectContent: {
+    flex: 1,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
+    marginTop: 12,
+  },
+  editButton: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 8,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#667eea',
+  },
+  deleteButton: {
+    backgroundColor: '#2d1b1b',
+    borderRadius: 8,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#ff6b6b',
+  },
+  
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    width: '90%',
+    maxWidth: 400,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalContent: {
+    padding: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 8,
+  },
+  modalTextInput: {
+    backgroundColor: '#333333',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#444444',
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 20,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#333333',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#667eea',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });
 

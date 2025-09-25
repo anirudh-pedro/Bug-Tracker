@@ -485,9 +485,9 @@ const EnhancedBugsScreen = ({navigation}) => {
 
       {/* Bug List */}
       <FlatList
-        data={filteredBugs}
+        data={filteredBugs || []}
         renderItem={({ item }) => <BugCard bug={item} />}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item, index) => item?._id || `bug-${index}`}
         contentContainerStyle={styles.bugList}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />

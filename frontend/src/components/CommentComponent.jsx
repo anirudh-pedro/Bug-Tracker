@@ -207,7 +207,7 @@ const CommentComponent = ({
           </View>
         ) : (
           comments.map((comment, index) => (
-            <CommentItem key={index} comment={comment} index={index} />
+            <CommentItem key={comment.id || comment._id || index} comment={comment} index={index} />
           ))
         )}
       </ScrollView>

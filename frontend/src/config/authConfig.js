@@ -2,12 +2,12 @@
 export const AUTH_CONFIG = {
   // Backend endpoints - for WiFi connected device  
   BACKEND_URL: __DEV__ 
-    ? 'http://192.168.137.118:5000' // Working WiFi IP
+    ? 'http://10.178.105.115:5000' // Working Wi-Fi IP
     : 'https://your-production-api.com',
   
   // Fallback URLs for connectivity issues
   FALLBACK_URLS: __DEV__ 
-    ? ['http://192.168.137.118:5000', 'http://localhost:5000', 'http://10.0.2.2:5000', 'http://172.31.80.1:5000']
+    ? ['http://10.178.105.115:5000', 'http://localhost:5000', 'http://172.31.80.1:5000', 'http://10.0.2.2:5000']
     : [],
   
   // Google Sign-In

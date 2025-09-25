@@ -694,9 +694,9 @@ const HomeScreen = ({ navigation, route }) => {
             <View style={styles.statsSection}>
               <Text style={styles.sectionTitle}>Your Dashboard</Text>
               <FlatList
-                data={statsData}
+                data={statsData || []}
                 renderItem={renderStatCard}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item, index) => item?.id || `stat-${index}`}
                 numColumns={isTablet ? 4 : 2}
                 scrollEnabled={false}
                 contentContainerStyle={styles.statsContainer}
@@ -733,9 +733,9 @@ const HomeScreen = ({ navigation, route }) => {
                     <Text style={styles.columnTitle}>� Your Projects</Text>
                   </View>
                   <FlatList
-                    data={trendingProjects}
+                    data={trendingProjects || []}
                     renderItem={renderProjectCard}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item, index) => item?.id || `project-${index}`}
                     scrollEnabled={false}
                     showsVerticalScrollIndicator={false}
                   />
@@ -750,9 +750,9 @@ const HomeScreen = ({ navigation, route }) => {
                     </TouchableOpacity>
                   </View>
                   <FlatList
-                    data={openBugs}
+                    data={openBugs || []}
                     renderItem={renderBugCard}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item, index) => item?.id || `bug-${index}`}
                     scrollEnabled={false}
                     showsVerticalScrollIndicator={false}
                   />
@@ -770,9 +770,9 @@ const HomeScreen = ({ navigation, route }) => {
               </View>
 
               <FlatList
-                data={recentContributions}
+                data={recentContributions || []}
                 renderItem={renderContributionCard}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item, index) => item?.id || `contribution-${index}`}
                 scrollEnabled={false}
                 showsVerticalScrollIndicator={false}
               />

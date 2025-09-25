@@ -12,9 +12,11 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import dataService from '../utils/dataService';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -25,6 +27,18 @@ const BugsScreen = ({navigation}) => {
   const [selectedProject, setSelectedProject] = useState('All');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Edit/Delete bug states
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedBug, setSelectedBug] = useState(null);
+  const [editedBugTitle, setEditedBugTitle] = useState('');
+  const [editedBugDescription, setEditedBugDescription] = useState('');
+  const [editedBugPriority, setEditedBugPriority] = useState('Medium');
+  const [editLoading, setEditLoading] = useState(false);
+  
+  // User identification for separating user vs global bugs
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showUserBugsOnly, setShowUserBugsOnly] = useState(false);
 
   // Sample bug data with different users
   const [allBugs, setAllBugs] = useState([
@@ -36,6 +50,7 @@ const BugsScreen = ({navigation}) => {
       status: 'Open',
       project: 'Web App',
       category: 'Frontend',
+      userId: 'user123', // Current user's bug
       user: {
         name: 'Sarah Chen',
         avatar: 'SC',
@@ -52,6 +67,7 @@ const BugsScreen = ({navigation}) => {
       status: 'In Progress',
       project: 'Backend API',
       category: 'Backend',
+      userId: 'user456', // Different user's bug
       user: {
         name: 'Mike Johnson',
         avatar: 'MJ',
@@ -68,6 +84,7 @@ const BugsScreen = ({navigation}) => {
       status: 'Open',
       project: 'Mobile App',
       category: 'Mobile',
+      userId: 'user123', // Current user's bug
       user: {
         name: 'Alex Rodriguez',
         avatar: 'AR',
@@ -84,6 +101,7 @@ const BugsScreen = ({navigation}) => {
       status: 'Open',
       project: 'Email Service',
       category: 'Backend',
+      userId: 'user789', // Different user's bug
       user: {
         name: 'Lisa Wang',
         avatar: 'LW',
@@ -136,29 +154,39 @@ const BugsScreen = ({navigation}) => {
     }, 2000);
   };
 
-  const handleStatusToggle = (bugId) => {
+  const handleStatusToggle = (bug) => {
+    const newStatus = bug.status === 'Open' ? 'Resolved' : 'Open';
     setAllBugs(prevBugs => 
-      prevBugs.map(bug => {
-        if (bug.id === bugId) {
-          const newStatus = bug.status === 'Open' ? 'Resolved' : 'Open';
-          return {...bug, status: newStatus};
-        }
-        return bug;
-      })
+      prevBugs.map(b => 
+        b.id === bug.id ? { ...b, status: newStatus } : b
+      )
     );
   };
 
-  const handleDeleteBug = (bugId) => {
+  const handleDeleteBug = (bug) => {
     Alert.alert(
       'Delete Bug',
-      'Are you sure you want to delete this bug report?',
+      `Are you sure you want to delete "${bug.title}"? This action cannot be undone.`,
       [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Delete',
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
           style: 'destructive',
-          onPress: () => {
-            setAllBugs(prevBugs => prevBugs.filter(bug => bug.id !== bugId));
+          onPress: async () => {
+            try {
+              const result = await dataService.deleteBug(bug.id);
+              
+              if (result.success) {
+                // Update local state
+                setAllBugs(prevBugs => prevBugs.filter(b => b.id !== bug.id));
+                Alert.alert('Success', 'Bug deleted successfully');
+              } else {
+                Alert.alert('Error', result.error || 'Failed to delete bug');
+              }
+            } catch (error) {
+              console.error('Error deleting bug:', error);
+              Alert.alert('Error', 'Failed to delete bug. Please try again.');
+            }
           }
         }
       ]
@@ -167,6 +195,11 @@ const BugsScreen = ({navigation}) => {
 
   const filterBugs = () => {
     let filtered = allBugs;
+
+    // Filter by user (My Bugs vs All Bugs)
+    if (showUserBugsOnly && currentUser) {
+      filtered = filtered.filter(bug => bug.userId === currentUser.id);
+    }
 
     // Filter by search query
     if (searchQuery.trim()) {
@@ -195,9 +228,25 @@ const BugsScreen = ({navigation}) => {
     setFilteredBugs(filtered);
   };
 
+  // Load current user on component mount
+  useEffect(() => {
+    loadCurrentUser();
+  }, []);
+
+  const loadCurrentUser = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('user_data');
+      if (userData) {
+        setCurrentUser(JSON.parse(userData));
+      }
+    } catch (error) {
+      console.error('Error loading current user:', error);
+    }
+  };
+
   useEffect(() => {
     filterBugs();
-  }, [searchQuery, selectedFilter, selectedPriority, selectedProject, allBugs]);
+  }, [searchQuery, selectedFilter, selectedPriority, selectedProject, allBugs, showUserBugsOnly, currentUser]);
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -266,41 +315,100 @@ const BugsScreen = ({navigation}) => {
           </View>
         </View>
         
-        <View style={styles.tagsContainer}>
-          {item.tags.map((tag, index) => (
-            <View key={index} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
-            </View>
-          ))}
-        </View>
+        {item.tags && item.tags.length > 0 && (
+          <View style={styles.tagsContainer}>
+            {item.tags.map((tag, index) => (
+              <View key={`${item.id}-tag-${index}-${tag}`} style={styles.tag}>
+                <Text style={styles.tagText}>{tag}</Text>
+              </View>
+            ))}
+          </View>
+        )}
       </TouchableOpacity>
       
-      {/* Quick Action Buttons */}
-      <View style={styles.quickActions}>
+      {/* Action Buttons */}
+      <View style={styles.actionButtons}>
         <TouchableOpacity 
-          style={[styles.quickActionButton, styles.statusToggleButton]}
-          onPress={() => handleStatusToggle(item.id)}
+          style={styles.editButton}
+          onPress={() => handleEditBug(item)}
+        >
+          <Icon name="edit" size={16} color="#667eea" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.deleteButton}
+          onPress={() => handleDeleteBug(item)}
+        >
+          <Icon name="delete" size={16} color="#ff6b6b" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.statusButton, {backgroundColor: item.status === 'Open' ? '#10b981' : '#f59e0b'}]}
+          onPress={() => handleStatusToggle(item)}
         >
           <Icon 
             name={item.status === 'Open' ? 'check' : 'refresh'} 
             size={16} 
             color="#ffffff" 
           />
-          <Text style={styles.quickActionText}>
-            {item.status === 'Open' ? 'Resolve' : 'Reopen'}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.quickActionButton, styles.deleteActionButton]}
-          onPress={() => handleDeleteBug(item.id)}
-        >
-          <Icon name="delete" size={16} color="#ffffff" />
-          <Text style={styles.quickActionText}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
+
+  // Handler functions for edit functionality
+  const handleEditBug = (bug) => {
+    setSelectedBug(bug);
+    setEditedBugTitle(bug.title);
+    setEditedBugDescription(bug.description);
+    setEditedBugPriority(bug.priority);
+    setEditModalVisible(true);
+  };
+
+  const handleSaveEditedBug = async () => {
+    if (!editedBugTitle.trim()) {
+      Alert.alert('Error', 'Bug title is required');
+      return;
+    }
+
+    setEditLoading(true);
+    
+    try {
+      const updateData = {
+        title: editedBugTitle.trim(),
+        description: editedBugDescription.trim(),
+        priority: editedBugPriority.toLowerCase()
+      };
+
+      const result = await dataService.updateBug(selectedBug.id, updateData);
+      
+      if (result.success) {
+        // Update local state
+        setAllBugs(prevBugs => 
+          prevBugs.map(bug => 
+            bug.id === selectedBug.id 
+              ? { 
+                  ...bug, 
+                  title: editedBugTitle.trim(),
+                  description: editedBugDescription.trim(),
+                  priority: editedBugPriority
+                }
+              : bug
+          )
+        );
+        
+        setEditModalVisible(false);
+        Alert.alert('Success', 'Bug updated successfully');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to update bug');
+      }
+    } catch (error) {
+      console.error('Error updating bug:', error);
+      Alert.alert('Error', 'Failed to update bug. Please try again.');
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   const FilterModal = () => (
     <Modal
@@ -409,6 +517,29 @@ const BugsScreen = ({navigation}) => {
           <Text style={styles.headerSubtitle}>{filteredBugs.length} bugs found</Text>
         </View>
 
+        {/* User/Global Bug Toggle */}
+        <View style={styles.toggleContainer}>
+          <TouchableOpacity 
+            style={[styles.toggleButton, !showUserBugsOnly && styles.toggleButtonActive]}
+            onPress={() => setShowUserBugsOnly(false)}
+          >
+            <Icon name="public" size={18} color={!showUserBugsOnly ? '#ffffff' : '#666666'} />
+            <Text style={[styles.toggleText, !showUserBugsOnly && styles.toggleTextActive]}>
+              All Bugs
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.toggleButton, showUserBugsOnly && styles.toggleButtonActive]}
+            onPress={() => setShowUserBugsOnly(true)}
+          >
+            <Icon name="person" size={18} color={showUserBugsOnly ? '#ffffff' : '#666666'} />
+            <Text style={[styles.toggleText, showUserBugsOnly && styles.toggleTextActive]}>
+              My Bugs
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Search and Filter */}
         <View style={styles.searchContainer}>
           <View style={styles.searchBox}>
@@ -430,9 +561,9 @@ const BugsScreen = ({navigation}) => {
 
         {/* Bugs List */}
         <FlatList
-          data={filteredBugs}
+          data={filteredBugs || []}
           renderItem={renderBugItem}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item, index) => item?.id?.toString() || `bug-${index}`}
           style={styles.bugsList}
           contentContainerStyle={styles.bugsListContent}
           showsVerticalScrollIndicator={false}
@@ -456,6 +587,98 @@ const BugsScreen = ({navigation}) => {
         />
 
         <FilterModal />
+        
+        {/* Edit Bug Modal */}
+        <Modal
+          visible={editModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setEditModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.editModalContainer}>
+              <View style={styles.editModalHeader}>
+                <Text style={styles.editModalTitle}>Edit Bug</Text>
+                <TouchableOpacity 
+                  onPress={() => setEditModalVisible(false)}
+                  style={styles.closeButton}
+                >
+                  <Icon name="close" size={24} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.editModalContent}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Bug Title</Text>
+                  <TextInput
+                    style={styles.editTextInput}
+                    value={editedBugTitle}
+                    onChangeText={setEditedBugTitle}
+                    placeholder="Enter bug title"
+                    placeholderTextColor="#666666"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Description</Text>
+                  <TextInput
+                    style={[styles.editTextInput, styles.textArea]}
+                    value={editedBugDescription}
+                    onChangeText={setEditedBugDescription}
+                    placeholder="Enter bug description"
+                    placeholderTextColor="#666666"
+                    multiline={true}
+                    numberOfLines={4}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Priority</Text>
+                  <View style={styles.priorityContainer}>
+                    {['Low', 'Medium', 'High', 'Critical'].map((priority) => (
+                      <TouchableOpacity
+                        key={priority}
+                        style={[
+                          styles.priorityOption,
+                          editedBugPriority === priority && styles.priorityOptionSelected
+                        ]}
+                        onPress={() => setEditedBugPriority(priority)}
+                      >
+                        <Text style={[
+                          styles.priorityOptionText,
+                          editedBugPriority === priority && styles.priorityOptionTextSelected
+                        ]}>
+                          {priority}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.editModalButtons}>
+                  <TouchableOpacity 
+                    style={styles.cancelButton}
+                    onPress={() => setEditModalVisible(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.saveButton, editLoading && styles.disabledButton]}
+                    onPress={handleSaveEditedBug}
+                    disabled={editLoading}
+                  >
+                    {editLoading ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <Text style={styles.saveButtonText}>Save Changes</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -763,6 +986,168 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1c1c1e',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  toggleSwitch: {
+    transform: [{ scaleX: 1.1 }, { scaleY: 1.1 }],
+  },
+  editModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editModalContainer: {
+    backgroundColor: '#1c1c1e',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  editModalHeader: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  editInputContainer: {
+    marginBottom: 16,
+  },
+  editInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8e8e93',
+    marginBottom: 8,
+  },
+  editInput: {
+    backgroundColor: '#2c2c2e',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#3a3a3c',
+  },
+  editInputMultiline: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  priorityContainer: {
+    marginBottom: 20,
+  },
+  priorityLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8e8e93',
+    marginBottom: 12,
+  },
+  priorityOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  priorityOption: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginHorizontal: 4,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#3a3a3c',
+  },
+  priorityOptionSelected: {
+    backgroundColor: '#ff9500',
+    borderColor: '#ff9500',
+  },
+  priorityOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8e8e93',
+  },
+  priorityOptionTextSelected: {
+    color: '#ffffff',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginHorizontal: 6,
+  },
+  cancelButton: {
+    backgroundColor: '#2c2c2e',
+    borderWidth: 1,
+    borderColor: '#3a3a3c',
+  },
+  saveButton: {
+    backgroundColor: '#ff9500',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  cancelButtonText: {
+    color: '#8e8e93',
+  },
+  bugActions: {
+    flexDirection: 'row',
+    marginTop: 8,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  editButton: {
+    backgroundColor: 'rgba(255, 149, 0, 0.2)',
+  },
+  deleteButton: {
+    backgroundColor: 'rgba(255, 59, 48, 0.2)',
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  editButtonText: {
+    color: '#ff9500',
+  },
+  deleteButtonText: {
+    color: '#ff3b30',
   },
 });
 

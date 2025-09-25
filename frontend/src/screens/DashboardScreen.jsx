@@ -252,7 +252,7 @@ const DashboardScreen = () => {
       {item.tags && item.tags.length > 0 && (
         <View style={styles.tagsContainer}>
           {item.tags.slice(0, 3).map((tag, index) => (
-            <View key={index} style={styles.tag}>
+            <View key={`${item.id}-tag-${index}-${tag}`} style={styles.tag}>
               <Text style={styles.tagText}>{tag}</Text>
             </View>
           ))}
@@ -345,9 +345,9 @@ const DashboardScreen = () => {
 
         {/* Bug List */}
         <FlatList
-          data={filteredBugs}
+          data={filteredBugs || []}
           renderItem={renderBugCard}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item, index) => item?.id?.toString() || `bug-${index}`}
           style={styles.bugsList}
           contentContainerStyle={styles.bugsListContent}
           showsVerticalScrollIndicator={false}
