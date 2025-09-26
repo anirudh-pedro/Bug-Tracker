@@ -81,9 +81,13 @@ const EnhancedBugsScreen = ({navigation}) => {
       const response = await apiRequest('/api/bugs?limit=50&sortBy=createdAt&sortOrder=desc');
       
       if (response.success) {
-        setBugs(response.data.bugs || []);
+        console.log('📋 Bugs API response:', response.data);
+        const bugsArray = response.data.bugs || [];
+        console.log('🐛 First bug sample:', bugsArray[0]);
+        setBugs(bugsArray);
         setLastRefresh(new Date());
       } else {
+        console.error('❌ Failed to load bugs:', response.message);
         if (!silent) {
           Alert.alert('Error', response.message || 'Failed to load bugs');
         }
@@ -185,6 +189,7 @@ const EnhancedBugsScreen = ({navigation}) => {
   };
 
   const navigateToBugDetail = (bugId) => {
+    console.log('🔍 Navigating to bug detail with ID:', bugId);
     navigation.navigate('EnhancedBugDetail', { bugId });
   };
 
@@ -195,7 +200,16 @@ const EnhancedBugsScreen = ({navigation}) => {
   const BugCard = ({ bug }) => (
     <TouchableOpacity 
       style={styles.bugCard}
-      onPress={() => navigateToBugDetail(bug._id)}
+      onPress={() => {
+        console.log('🐛 Bug data:', { id: bug.id, _id: bug._id, bugId: bug.bugId });
+        const bugId = bug._id || bug.id;
+        if (!bugId) {
+          console.error('❌ Bug ID is undefined!');
+          Alert.alert('Error', 'Cannot open bug details: Invalid bug ID');
+          return;
+        }
+        navigateToBugDetail(bugId);
+      }}
       activeOpacity={0.7}
     >
       <View style={styles.bugHeader}>

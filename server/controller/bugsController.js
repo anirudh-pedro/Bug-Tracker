@@ -116,6 +116,16 @@ const getAllBugs = async (req, res) => {
 
     // Standardize bug responses
     const standardizedBugs = bugs.map(bug => standardizeBugResponse(bug));
+    
+    // Debug: Log the bug IDs we found
+    console.log('📋 Found bugs count:', standardizedBugs.length);
+    if (standardizedBugs.length > 0) {
+      console.log('🐛 Sample bug IDs:', standardizedBugs.slice(0, 3).map(bug => ({
+        id: bug.id,
+        _id: bug._id,
+        bugId: bug.bugId
+      })));
+    }
 
     const paginationData = standardizePagination({
       currentPage: parseInt(page),
@@ -146,8 +156,11 @@ const getAllBugs = async (req, res) => {
  */
 const getBugById = async (req, res) => {
   try {
+    console.log('🔍 getBugById called with identifier:', req.params.identifier);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ Validation errors:', errors.array());
       return res.status(400).json(createErrorResponse(
         'Validation failed',
         errors.array(),
@@ -156,16 +169,21 @@ const getBugById = async (req, res) => {
     }
 
     const { identifier } = req.params;
+    console.log('🎯 Processing bug identifier:', identifier);
 
-    if (!validateBugIdentifier(identifier)) {
+    const validation = validateBugIdentifier(identifier);
+    if (!validation.valid) {
+      console.log('❌ Invalid bug identifier format:', identifier, 'Error:', validation.error);
       return res.status(400).json(createErrorResponse(
-        'Invalid bug identifier format',
+        validation.error || 'Invalid bug identifier format',
         null,
         400
       ));
     }
 
+    console.log('🔍 Searching for bug with identifier:', identifier);
     const bug = await findBugByIdOrBugId(identifier);
+    console.log('📋 Bug lookup result:', bug ? 'FOUND' : 'NOT FOUND');
 
     if (!bug) {
       return res.status(404).json(createErrorResponse(
@@ -183,7 +201,9 @@ const getBugById = async (req, res) => {
     ));
 
   } catch (error) {
-    console.error('Get bug by ID error:', error);
+    console.error('❌ Get bug by ID error:', error.message);
+    console.error('🔍 Error stack:', error.stack);
+    console.error('🎯 Identifier that caused error:', req.params.identifier);
     res.status(500).json(createErrorResponse(
       'Server error while fetching bug',
       process.env.NODE_ENV === 'development' ? error.message : null,

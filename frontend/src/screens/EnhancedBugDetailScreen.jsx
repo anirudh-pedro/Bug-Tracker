@@ -34,6 +34,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [showGithubLinkModal, setShowGithubLinkModal] = useState(false);
   const [showCommentPointsModal, setShowCommentPointsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   
   // Form states
   const [pointsToAward, setPointsToAward] = useState('');
@@ -44,6 +45,12 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
   const [selectedComment, setSelectedComment] = useState(null);
   const [commentPointsToAward, setCommentPointsToAward] = useState('');
   const [commentAwardReason, setCommentAwardReason] = useState('');
+  
+  // Edit bug states
+  const [editedTitle, setEditedTitle] = useState('');
+  const [editedDescription, setEditedDescription] = useState('');
+  const [editedPriority, setEditedPriority] = useState('medium');
+  const [editLoading, setEditLoading] = useState(false);
   
   // Username suggestion states
   const [userSuggestions, setUserSuggestions] = useState([]);
@@ -77,7 +84,8 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
       ]);
 
       if (bugResponse.success) {
-        setBug(bugResponse.data.bug);
+        console.log('🐛 Bug API response:', bugResponse.data);
+        setBug(bugResponse.data);
       }
 
       if (githubResponse.success) {
@@ -142,9 +150,52 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
   };
 
   const handleEditBug = () => {
-    // Navigate to edit bug screen (you might need to create this screen)
-    Alert.alert('Info', 'Edit bug functionality - to be implemented');
-    // navigation.navigate('EditBug', { bugId: bugId, bug: bug });
+    setEditedTitle(bug.title);
+    setEditedDescription(bug.description);
+    setEditedPriority(bug.priority);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editedTitle.trim()) {
+      Alert.alert('Error', 'Bug title is required');
+      return;
+    }
+
+    setEditLoading(true);
+    
+    try {
+      const updateData = {
+        title: editedTitle.trim(),
+        description: editedDescription.trim(),
+        priority: editedPriority.toLowerCase()
+      };
+
+      const response = await apiRequest(`/api/bugs/${bugId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+      });
+      
+      if (response.success) {
+        // Update local bug state
+        setBug(prevBug => ({
+          ...prevBug,
+          title: editedTitle.trim(),
+          description: editedDescription.trim(),
+          priority: editedPriority
+        }));
+        
+        setShowEditModal(false);
+        Alert.alert('Success', 'Bug updated successfully');
+      } else {
+        Alert.alert('Error', response.message || 'Failed to update bug');
+      }
+    } catch (error) {
+      console.error('Error updating bug:', error);
+      Alert.alert('Error', 'Failed to update bug. Please try again.');
+    } finally {
+      setEditLoading(false);
+    }
   };
 
   const linkGithubRepo = async () => {
@@ -1039,6 +1090,80 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
           </View>
         </View>
       </Modal>
+
+      {/* Edit Bug Modal */}
+      <Modal visible={showEditModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Bug</Text>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Bug Title</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter bug title"
+                value={editedTitle}
+                onChangeText={setEditedTitle}
+                multiline={false}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Description</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Enter bug description"
+                value={editedDescription}
+                onChangeText={setEditedDescription}
+                multiline={true}
+                numberOfLines={4}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Priority</Text>
+              <View style={styles.priorityContainer}>
+                {['Low', 'Medium', 'High', 'Critical'].map(priority => (
+                  <TouchableOpacity
+                    key={priority}
+                    style={[
+                      styles.priorityOption,
+                      editedPriority.toLowerCase() === priority.toLowerCase() && styles.priorityOptionSelected
+                    ]}
+                    onPress={() => setEditedPriority(priority)}
+                  >
+                    <Text style={[
+                      styles.priorityOptionText,
+                      editedPriority.toLowerCase() === priority.toLowerCase() && styles.priorityOptionTextSelected
+                    ]}>
+                      {priority}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowEditModal(false)}
+              >
+                <Text style={[styles.modalButtonText, styles.cancelButtonText]}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleSaveEdit}
+                disabled={editLoading}
+              >
+                <Text style={styles.modalButtonText}>
+                  {editLoading ? 'Saving...' : 'Save Changes'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -1588,6 +1713,75 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 6,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#CCCCCC',
+    marginBottom: 8,
+  },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  priorityContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  priorityOption: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginHorizontal: 4,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#444444',
+    backgroundColor: '#2A2A2A',
+  },
+  priorityOptionSelected: {
+    backgroundColor: '#3498DB',
+    borderColor: '#3498DB',
+  },
+  priorityOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#CCCCCC',
+  },
+  priorityOptionTextSelected: {
+    color: '#FFFFFF',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 6,
+  },
+  cancelButton: {
+    backgroundColor: '#2A2A2A',
+    borderWidth: 1,
+    borderColor: '#444444',
+  },
+  saveButton: {
+    backgroundColor: '#3498DB',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  cancelButtonText: {
+    color: '#CCCCCC',
   },
 });
 

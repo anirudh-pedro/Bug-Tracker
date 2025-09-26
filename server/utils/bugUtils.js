@@ -8,17 +8,33 @@ const Bug = require('../models/Bug');
  */
 const findBugByIdOrBugId = async (identifier) => {
   try {
+    console.log('🔍 findBugByIdOrBugId called with:', identifier);
+    
     // First try to find by MongoDB _id
-    let bug = await Bug.findById(identifier).catch(() => null);
+    console.log('🔍 Trying to find by MongoDB _id...');
+    let bug = await Bug.findById(identifier).catch((err) => {
+      console.log('❌ findById failed:', err.message);
+      return null;
+    });
+    
+    if (bug) {
+      console.log('✅ Found bug by MongoDB _id:', bug._id);
+      return bug;
+    }
     
     // If not found by _id, try to find by bugId field
-    if (!bug) {
-      bug = await Bug.findOne({ bugId: identifier });
+    console.log('🔍 Not found by _id, trying by bugId field...');
+    bug = await Bug.findOne({ bugId: identifier });
+    
+    if (bug) {
+      console.log('✅ Found bug by bugId:', bug.bugId);
+    } else {
+      console.log('❌ Bug not found by either _id or bugId');
     }
     
     return bug;
   } catch (error) {
-    console.error('Error finding bug by ID or BugId:', error);
+    console.error('❌ Error finding bug by ID or BugId:', error);
     return null;
   }
 };

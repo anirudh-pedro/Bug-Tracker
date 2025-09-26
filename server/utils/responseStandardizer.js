@@ -108,8 +108,8 @@ const standardizeBugResponse = (bug) => {
     assignedTo: standardizeUserReference(bug.assignedTo),
     bountyPoints: Number(bug.bountyPoints || 0),
     pointsAwarded: bug.pointsAwarded ? bug.pointsAwarded.map(award => ({
-      userId: award.userId.toString(),
-      points: Number(award.points),
+      userId: award.userId ? award.userId.toString() : null,
+      points: Number(award.points || 0),
       reason: award.reason || '',
       awardedAt: standardizeDate(award.awardedAt),
       awardedBy: award.awardedBy ? award.awardedBy.toString() : null
