@@ -14,6 +14,7 @@ import {
   Dimensions,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useFocusEffect} from '@react-navigation/native';
 import auth from '@react-native-firebase/auth';
 import { getApp } from '@react-native-firebase/app';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
@@ -93,8 +94,7 @@ const HomeScreen = ({ navigation, route }) => {
   const [editProjectKey, setEditProjectKey] = useState('');
 
   // Load user-specific data from API
-  useEffect(() => {
-    const fetchUserContributions = async () => {
+  const fetchUserContributions = async () => {
       try {
         // Fetch user-specific statistics
         const userStatsRes = await apiRequest('/api/users/my-stats', { method: 'GET' });
@@ -153,8 +153,19 @@ const HomeScreen = ({ navigation, route }) => {
         console.error('Error loading dashboard:', err);
       }
     };
+
+  // Load data on component mount
+  useEffect(() => {
     fetchUserContributions();
   }, []);
+
+  // Refresh data when screen comes into focus (after navigating back)
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🏠 HomeScreen focused - refreshing data');
+      fetchUserContributions();
+    }, [])
+  );
 
   // Pull to refresh handler
   const onRefresh = React.useCallback(async () => {
@@ -1049,7 +1060,7 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: '#00ff00',
+    backgroundColor: '#27AE60',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,

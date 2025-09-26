@@ -20,7 +20,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const {width: screenWidth} = Dimensions.get('window');
 
-const EnhancedBugsScreen = ({navigation}) => {
+const EnhancedBugsScreen = ({navigation, route}) => {
+  // Project filter from navigation params
+  const projectFilter = route?.params?.projectId ? {
+    projectId: route.params.projectId,
+    projectName: route.params.projectName
+  } : null;
+
   // State for bugs and filters
   const [bugs, setBugs] = useState([]);
   const [filteredBugs, setFilteredBugs] = useState([]);
@@ -37,9 +43,27 @@ const EnhancedBugsScreen = ({navigation}) => {
   // User and permissions
   const [currentUser, setCurrentUser] = useState(null);
   
+  // Section management for My Bugs vs Global Bugs
+  const [activeSection, setActiveSection] = useState('global-bugs'); // 'my-bugs' or 'global-bugs'
+  
+  // Bug counts for tabs
+  const [myBugsCount, setMyBugsCount] = useState(0);
+  const [globalBugsCount, setGlobalBugsCount] = useState(0);
+  
   // Auto-refresh for real-time updates
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+
+  // Edit/Delete modal states
+  const [selectedBug, setSelectedBug] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editSeverity, setEditSeverity] = useState('Medium');
+  const [editStatus, setEditStatus] = useState('Open');
+  const [isEditingSaving, setIsEditingSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Filter options
   const statusOptions = ['All', 'Open', 'In Progress', 'Resolved', 'Closed'];
@@ -61,13 +85,30 @@ const EnhancedBugsScreen = ({navigation}) => {
 
   useEffect(() => {
     applyFilters();
-  }, [bugs, searchQuery, selectedStatus, selectedPriority, selectedProject]);
+  }, [applyFilters, bugs, loading]);
 
   const loadCurrentUser = async () => {
     try {
-      const userData = await AsyncStorage.getItem('user_data');
+      // First try to get user data from the standardized 'user_data' key
+      let userData = await AsyncStorage.getItem('user_data');
+      
+      if (!userData) {
+        // If that doesn't work, try to get all keys and find user_data_* keys
+        const allKeys = await AsyncStorage.getAllKeys();
+        const userDataKey = allKeys.find(key => key.startsWith('user_data_'));
+        
+        if (userDataKey) {
+          console.log('🔍 Found user data key:', userDataKey);
+          userData = await AsyncStorage.getItem(userDataKey);
+        }
+      }
+      
       if (userData) {
-        setCurrentUser(JSON.parse(userData));
+        const user = JSON.parse(userData);
+        console.log('👤 Loaded current user:', user);
+        setCurrentUser(user);
+      } else {
+        console.log('⚠️ No user data found in AsyncStorage');
       }
     } catch (error) {
       console.error('Error loading current user:', error);
@@ -102,14 +143,132 @@ const EnhancedBugsScreen = ({navigation}) => {
     }
   };
 
+  const getMyBugs = useCallback(() => {
+    if (!currentUser) {
+      console.log('🔍 getMyBugs: No current user, returning empty array');
+      return [];
+    }
+    
+    // Convert both IDs to strings for comparison to handle ObjectId vs string mismatch
+    const currentUserId = String(currentUser.id);
+    const myBugs = bugs.filter(bug => {
+      const reportedById = String(bug.reportedBy?.id || '');
+      const match = reportedById === currentUserId;
+      return match;
+    });
+    
+    console.log('🔍 getMyBugs: currentUser.id:', currentUser.id);
+    console.log('🔍 getMyBugs: currentUserId (string):', currentUserId);
+    console.log('🔍 getMyBugs: Total bugs:', bugs.length);
+    console.log('🔍 getMyBugs: My bugs:', myBugs.length);
+    if (bugs.length > 0) {
+      console.log('🔍 getMyBugs: First bug reportedBy:', bugs[0].reportedBy);
+      console.log('🔍 getMyBugs: First bug reportedById (string):', String(bugs[0].reportedBy?.id));
+      console.log('🔍 getMyBugs: ID comparison:', String(bugs[0].reportedBy?.id), '===', currentUserId, '→', String(bugs[0].reportedBy?.id) === currentUserId);
+    }
+    return myBugs;
+  }, [bugs, currentUser]);
+
+  const getGlobalBugs = useCallback(() => {
+    console.log('🔍 getGlobalBugs: Returning ALL bugs');
+    console.log('🔍 getGlobalBugs: Total bugs:', bugs.length);
+    if (bugs.length > 0) {
+      console.log('🔍 getGlobalBugs: First bug reportedBy:', bugs[0].reportedBy);
+    }
+    return bugs; // Show ALL bugs in global view
+  }, [bugs]);
+
+  // Edit and Delete handlers
+  const handleEditBug = (bug) => {
+    setSelectedBug(bug);
+    setEditTitle(bug.title);
+    setEditDescription(bug.description);
+    setEditSeverity(bug.severity);
+    setEditStatus(bug.status);
+    setShowEditModal(true);
+  };
+
+  const handleDeleteBug = (bug) => {
+    setSelectedBug(bug);
+    setShowDeleteModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedBug || !editTitle.trim()) return;
+
+    try {
+      setIsEditingSaving(true);
+      const response = await enhancedNetworkUtils.put(`/bugs/${selectedBug._id}`, {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        severity: editSeverity,
+        status: editStatus,
+      });
+
+      if (response.success) {
+        // Update the bug in the local state
+        setBugs(prevBugs => prevBugs.map(bug => 
+          bug._id === selectedBug._id 
+            ? { ...bug, title: editTitle, description: editDescription, severity: editSeverity, status: editStatus }
+            : bug
+        ));
+        
+        setShowEditModal(false);
+        setSelectedBug(null);
+        Alert.alert('Success', 'Bug updated successfully!');
+      } else {
+        Alert.alert('Error', response.message || 'Failed to update bug');
+      }
+    } catch (error) {
+      console.error('Error updating bug:', error);
+      Alert.alert('Error', 'Failed to update bug. Please try again.');
+    } finally {
+      setIsEditingSaving(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedBug) return;
+
+    try {
+      setIsDeleting(true);
+      const response = await enhancedNetworkUtils.delete(`/bugs/${selectedBug._id}`);
+
+      if (response.success) {
+        // Remove the bug from local state
+        setBugs(prevBugs => prevBugs.filter(bug => bug._id !== selectedBug._id));
+        setShowDeleteModal(false);
+        setSelectedBug(null);
+        Alert.alert('Success', 'Bug deleted successfully!');
+      } else {
+        Alert.alert('Error', response.message || 'Failed to delete bug');
+      }
+    } catch (error) {
+      console.error('Error deleting bug:', error);
+      Alert.alert('Error', 'Failed to delete bug. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadBugs();
     setRefreshing(false);
   }, []);
 
-  const applyFilters = () => {
-    let filtered = [...bugs];
+  const applyFilters = useCallback(() => {
+    // Don't apply filters if we're still loading or have no bugs
+    if (loading || bugs.length === 0) {
+      console.log('🔍 applyFilters: Skipping - loading:', loading, 'bugs.length:', bugs.length);
+      setFilteredBugs([]);
+      return;
+    }
+
+    // Get base data based on active section
+    let filtered = activeSection === 'my-bugs' ? getMyBugs() : getGlobalBugs();
+    console.log('🔍 applyFilters: activeSection =', activeSection);
+    console.log('🔍 applyFilters: base filtered count =', filtered.length);
 
     // Apply search filter
     if (searchQuery.trim()) {
@@ -141,8 +300,24 @@ const EnhancedBugsScreen = ({navigation}) => {
       );
     }
 
+    // Apply route-based project filter (from navigation params)
+    if (projectFilter) {
+      filtered = filtered.filter(bug => 
+        bug.project?._id === projectFilter.projectId
+      );
+    }
+
+    console.log('🔍 applyFilters final result:', filtered.length, 'bugs');
+    console.log('🔍 Setting filteredBugs to:', filtered);
     setFilteredBugs(filtered);
-  };
+    
+    // Update counts for tabs
+    const myBugs = getMyBugs();
+    const globalBugs = getGlobalBugs();
+    setMyBugsCount(myBugs.length);
+    setGlobalBugsCount(globalBugs.length);
+    console.log('🔍 Updated counts - My Bugs:', myBugs.length, 'Global Bugs:', globalBugs.length);
+  }, [loading, bugs.length, getMyBugs, getGlobalBugs, searchQuery, selectedStatus, selectedPriority, selectedProject, activeSection, projectFilter?.projectId]);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -269,6 +444,27 @@ const EnhancedBugsScreen = ({navigation}) => {
           <Text style={styles.projectTagText}>{bug.project.name}</Text>
         </View>
       )}
+
+      {/* Edit/Delete Actions - Only for user's own bugs in My Bugs section */}
+      {activeSection === 'my-bugs' && currentUser && bug.reportedBy?.id === currentUser.id && (
+        <View style={styles.bugActions}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => handleEditBug(bug)}
+          >
+            <Icon name="edit" size={16} color="#3498DB" />
+            <Text style={styles.actionButtonText}>Edit</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.deleteActionButton]}
+            onPress={() => handleDeleteBug(bug)}
+          >
+            <Icon name="delete" size={16} color="#E74C3C" />
+            <Text style={[styles.actionButtonText, { color: '#E74C3C' }]}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -392,11 +588,17 @@ const EnhancedBugsScreen = ({navigation}) => {
     );
   }
 
+  console.log('🎯 RENDER: filteredBugs.length =', filteredBugs?.length);
+  console.log('🎯 RENDER: activeSection =', activeSection);
+  console.log('🎯 RENDER: bugs.length =', bugs?.length);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Bug Reports</Text>
+        <Text style={styles.headerTitle}>
+          {projectFilter ? `${projectFilter.projectName} Bugs` : 'Bug Reports'}
+        </Text>
         <View style={styles.headerActions}>
           <TouchableOpacity 
             style={styles.filterButton}
@@ -414,6 +616,42 @@ const EnhancedBugsScreen = ({navigation}) => {
             <Icon name="refresh" size={24} color="#2E3A59" />
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* Section Tabs */}
+      <View style={styles.sectionTabs}>
+        <TouchableOpacity 
+          style={[styles.sectionTab, activeSection === 'my-bugs' && styles.sectionTabActive]}
+          onPress={() => setActiveSection('my-bugs')}
+        >
+          <Icon name="person" size={18} color={activeSection === 'my-bugs' ? '#ff9500' : '#666666'} />
+          <Text style={[styles.sectionTabText, activeSection === 'my-bugs' && styles.sectionTabTextActive]}>
+            My Bugs ({myBugsCount})
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.sectionTab, activeSection === 'global-bugs' && styles.sectionTabActive]}
+          onPress={() => setActiveSection('global-bugs')}
+        >
+          <Icon name="public" size={18} color={activeSection === 'global-bugs' ? '#ff9500' : '#666666'} />
+          <Text style={[styles.sectionTabText, activeSection === 'global-bugs' && styles.sectionTabTextActive]}>
+            Global Bugs ({globalBugsCount})
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Section Header */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>
+          {activeSection === 'my-bugs' ? 'My Bug Reports' : 'Global Bug Reports'}
+        </Text>
+        <Text style={styles.sectionSubtitle}>
+          {activeSection === 'my-bugs' 
+            ? 'Bugs you have reported. You can edit and delete these.'
+            : 'All bugs reported by everyone, including yourself.'
+          }
+        </Text>
       </View>
 
       {/* Search Bar */}
@@ -509,11 +747,15 @@ const EnhancedBugsScreen = ({navigation}) => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Icon name="bug-report" size={64} color="#BDC3C7" />
-            <Text style={styles.emptyTitle}>No bugs found</Text>
+            <Text style={styles.emptyTitle}>
+              {activeSection === 'my-bugs' ? 'No bugs reported by you' : 'No bugs found'}
+            </Text>
             <Text style={styles.emptySubtitle}>
               {filteredBugs.length !== bugs.length 
                 ? 'Try adjusting your filters'
-                : 'Be the first to report a bug'
+                : activeSection === 'my-bugs' 
+                  ? 'Create your first bug report'
+                  : 'No bugs have been reported yet'
               }
             </Text>
           </View>
@@ -531,6 +773,146 @@ const EnhancedBugsScreen = ({navigation}) => {
       </TouchableOpacity>
 
       <FilterModal />
+
+      {/* Edit Bug Modal */}
+      <Modal visible={showEditModal} animationType="slide" transparent>
+        <View style={styles.editModalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Bug</Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                <Icon name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Title</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={editTitle}
+                  onChangeText={setEditTitle}
+                  placeholder="Enter bug title"
+                  multiline
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Description</Text>
+                <TextInput
+                  style={[styles.textInput, { height: 100 }]}
+                  value={editDescription}
+                  onChangeText={setEditDescription}
+                  placeholder="Enter bug description"
+                  multiline
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Severity</Text>
+                <View style={styles.pickerContainer}>
+                  {['Low', 'Medium', 'High', 'Critical'].map((severity) => (
+                    <TouchableOpacity
+                      key={severity}
+                      style={[
+                        styles.pickerOption,
+                        editSeverity === severity && styles.pickerOptionSelected
+                      ]}
+                      onPress={() => setEditSeverity(severity)}
+                    >
+                      <Text style={[
+                        styles.pickerOptionText,
+                        editSeverity === severity && styles.pickerOptionTextSelected
+                      ]}>
+                        {severity}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Status</Text>
+                <View style={styles.pickerContainer}>
+                  {['Open', 'In Progress', 'Resolved', 'Closed'].map((status) => (
+                    <TouchableOpacity
+                      key={status}
+                      style={[
+                        styles.pickerOption,
+                        editStatus === status && styles.pickerOptionSelected
+                      ]}
+                      onPress={() => setEditStatus(status)}
+                    >
+                      <Text style={[
+                        styles.pickerOptionText,
+                        editStatus === status && styles.pickerOptionTextSelected
+                      ]}>
+                        {status}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => setShowEditModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.saveButton}
+                onPress={handleSaveEdit}
+                disabled={isEditingSaving}
+              >
+                {isEditingSaving ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal visible={showDeleteModal} animationType="fade" transparent>
+        <View style={styles.editModalOverlay}>
+          <View style={styles.deleteModalContainer}>
+            <View style={styles.deleteModalHeader}>
+              <Icon name="warning" size={48} color="#E74C3C" />
+              <Text style={styles.deleteModalTitle}>Delete Bug</Text>
+              <Text style={styles.deleteModalMessage}>
+                Are you sure you want to delete this bug? This action cannot be undone.
+              </Text>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => setShowDeleteModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.deleteButton}
+                onPress={confirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.deleteButtonText}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -586,6 +968,65 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     padding: 8,
+  },
+  // Section Tab Styles
+  sectionTabs: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#1a1a1a',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
+  },
+  sectionTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginHorizontal: 4,
+    backgroundColor: '#2a2a2a',
+    borderWidth: 2,
+    borderColor: '#444444',
+  },
+  sectionTabActive: {
+    backgroundColor: '#ff9500',
+    borderColor: '#ff9500',
+    shadowColor: '#ff9500',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginLeft: 6,
+  },
+  sectionTabTextActive: {
+    color: '#000000',
+    fontWeight: '700',
+  },
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#1a1a1a',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#999999',
+    lineHeight: 18,
   },
   searchContainer: {
     paddingHorizontal: 16,
@@ -961,6 +1402,174 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFF',
+  },
+  
+  // Bug actions styles
+  bugActions: {
+    flexDirection: 'row',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E1E8ED',
+    gap: 8,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#3498DB',
+    gap: 4,
+  },
+  deleteActionButton: {
+    borderColor: '#E74C3C',
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#3498DB',
+  },
+  
+  // Modal styles for edit/delete
+  editModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+  },
+  modalContent: {
+    maxHeight: 400,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 8,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#BDC3C7',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#FFF',
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  pickerOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#BDC3C7',
+    backgroundColor: '#F8F9FA',
+  },
+  pickerOptionSelected: {
+    backgroundColor: '#3498DB',
+    borderColor: '#3498DB',
+  },
+  pickerOptionText: {
+    fontSize: 14,
+    color: '#2C3E50',
+  },
+  pickerOptionTextSelected: {
+    color: '#FFF',
+    fontWeight: '600',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#BDC3C7',
+    backgroundColor: '#F8F9FA',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  saveButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+    backgroundColor: '#3498DB',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  deleteButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+    backgroundColor: '#E74C3C',
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  deleteModalContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 24,
+    width: '85%',
+    alignItems: 'center',
+  },
+  deleteModalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  deleteModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#E74C3C',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  deleteModalMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });
 

@@ -17,6 +17,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { apiRequest } from '../utils/enhancedNetworkUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -70,6 +71,27 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
       }
     } catch (error) {
       console.error('Error loading current user:', error);
+    }
+  };
+
+  // Helper functions for styling
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'open': return { backgroundColor: '#E74C3C' };
+      case 'in progress': return { backgroundColor: '#ff9500' };
+      case 'resolved': return { backgroundColor: '#27AE60' };
+      case 'closed': return { backgroundColor: '#95A5A6' };
+      default: return { backgroundColor: '#666666' };
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority?.toLowerCase()) {
+      case 'critical': return { backgroundColor: '#8E44AD' };
+      case 'high': return { backgroundColor: '#E74C3C' };
+      case 'medium': return { backgroundColor: '#ff9500' };
+      case 'low': return { backgroundColor: '#27AE60' };
+      default: return { backgroundColor: '#666666' };
     }
   };
 
@@ -605,26 +627,6 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'open': return '#FF6B6B';
-      case 'in-progress': return '#4ECDC4';
-      case 'resolved': return '#45B7D1';
-      case 'closed': return '#6C5CE7';
-      default: return '#95A5A6';
-    }
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority?.toLowerCase()) {
-      case 'critical': return '#E74C3C';
-      case 'high': return '#E67E22';
-      case 'medium': return '#F39C12';
-      case 'low': return '#27AE60';
-      default: return '#95A5A6';
-    }
-  };
-
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -772,51 +774,144 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
             )
           )}
 
-          {/* GitHub Statistics */}
-          {githubActivity && (
-            <View style={styles.githubStats}>
-              <View style={styles.statItem}>
-                <Icon name="call-split" size={20} color="#666" />
-                <Text style={styles.statText}>{githubActivity.statistics.forkCount} Forks</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Icon name="merge-type" size={20} color="#666" />
-                <Text style={styles.statText}>{githubActivity.statistics.prCount} PRs</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Icon name="check-circle" size={20} color="#27AE60" />
-                <Text style={styles.statText}>{githubActivity.statistics.mergedPRs} Merged</Text>
-              </View>
-            </View>
-          )}
+
         </View>
 
-        {/* Pull Requests Section */}
-        {githubActivity?.pullRequests && githubActivity.pullRequests.length > 0 && (
-          <View style={styles.prSection}>
-            <Text style={styles.sectionTitle}>Pull Requests</Text>
-            {githubActivity.pullRequests.map((pr, index) => (
-              <View key={index} style={styles.prItem}>
-                <View style={styles.prHeader}>
-                  <Text style={styles.prTitle}>{pr.title}</Text>
-                  <View style={[styles.prStatus, { backgroundColor: pr.status === 'merged' ? '#27AE60' : '#3498DB' }]}>
-                    <Text style={styles.prStatusText}>{pr.status.toUpperCase()}</Text>
-                  </View>
-                </View>
-                <Text style={styles.prAuthor}>by {pr.author.githubUsername}</Text>
-                <TouchableOpacity onPress={() => openUrl(pr.url)}>
-                  <Text style={styles.prLink}>View on GitHub</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
 
-        {/* Description */}
+
+        {/* Bug Details */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.description}>{bug.description}</Text>
         </View>
+
+        {/* Steps to Reproduce */}
+        {bug.stepsToReproduce && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Steps to Reproduce</Text>
+            <Text style={styles.detailText}>{bug.stepsToReproduce}</Text>
+          </View>
+        )}
+
+        {/* Expected Behavior */}
+        {bug.expectedBehavior && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Expected Behavior</Text>
+            <Text style={styles.detailText}>{bug.expectedBehavior}</Text>
+          </View>
+        )}
+
+        {/* Actual Behavior */}
+        {bug.actualBehavior && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Actual Behavior</Text>
+            <Text style={styles.detailText}>{bug.actualBehavior}</Text>
+          </View>
+        )}
+
+        {/* Environment */}
+        {bug.environment && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Environment</Text>
+            <Text style={styles.detailText}>{bug.environment}</Text>
+          </View>
+        )}
+
+        {/* Technical Details */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Technical Details</Text>
+          <View style={styles.techDetails}>
+            <View style={styles.techRow}>
+              <Text style={styles.techLabel}>Status:</Text>
+              <View style={[styles.statusBadge, getStatusColor(bug.status)]}>
+                <Text style={styles.statusText}>{bug.status?.toUpperCase()}</Text>
+              </View>
+            </View>
+            <View style={styles.techRow}>
+              <Text style={styles.techLabel}>Priority:</Text>
+              <View style={[styles.priorityBadge, getPriorityColor(bug.priority)]}>
+                <Text style={styles.priorityText}>{bug.priority?.toUpperCase()}</Text>
+              </View>
+            </View>
+            {bug.severity && (
+              <View style={styles.techRow}>
+                <Text style={styles.techLabel}>Severity:</Text>
+                <Text style={styles.techValue}>{bug.severity}</Text>
+              </View>
+            )}
+            {bug.category && (
+              <View style={styles.techRow}>
+                <Text style={styles.techLabel}>Category:</Text>
+                <Text style={styles.techValue}>{bug.category}</Text>
+              </View>
+            )}
+            {bug.project && (
+              <View style={styles.techRow}>
+                <Text style={styles.techLabel}>Project:</Text>
+                <Text style={styles.techValue}>{bug.project.name}</Text>
+              </View>
+            )}
+            <View style={styles.techRow}>
+              <Text style={styles.techLabel}>Bug ID:</Text>
+              <Text style={styles.techValue}>#{bug.bugId}</Text>
+            </View>
+            <View style={styles.techRow}>
+              <Text style={styles.techLabel}>Created:</Text>
+              <Text style={styles.techValue}>{new Date(bug.createdAt).toLocaleDateString()}</Text>
+            </View>
+            {bug.updatedAt && bug.updatedAt !== bug.createdAt && (
+              <View style={styles.techRow}>
+                <Text style={styles.techLabel}>Last Updated:</Text>
+                <Text style={styles.techValue}>{new Date(bug.updatedAt).toLocaleDateString()}</Text>
+              </View>
+            )}
+            {bug.tags && bug.tags.length > 0 && (
+              <View style={styles.techRow}>
+                <Text style={styles.techLabel}>Tags:</Text>
+                <View style={styles.tagsContainer}>
+                  {bug.tags.map((tag, index) => (
+                    <View key={index} style={styles.tagChip}>
+                      <Text style={styles.tagText}>{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Repository Link */}
+        {bug.repositoryUrl && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Repository</Text>
+            <TouchableOpacity 
+              style={styles.repoLink}
+              onPress={() => openUrl(bug.repositoryUrl)}
+            >
+              <Icon name="code" size={20} color="#4ECDC4" />
+              <Text style={styles.repoLinkText}>View Repository</Text>
+              <Icon name="open-in-new" size={16} color="#4ECDC4" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Attachments */}
+        {bug.attachments && bug.attachments.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Attachments</Text>
+            <View style={styles.attachmentsContainer}>
+              {bug.attachments.map((attachment, index) => (
+                <View key={index} style={styles.attachmentItem}>
+                  <Icon name="attach-file" size={20} color="#ff9500" />
+                  <Text style={styles.attachmentName}>{attachment.name}</Text>
+                  <Text style={styles.attachmentSize}>
+                    {attachment.size ? `${(attachment.size / 1024).toFixed(1)} KB` : ''}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Comments Section */}
         <View style={styles.commentsSection}>
@@ -1194,7 +1289,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#3498DB',
+    backgroundColor: '#ff9500',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
@@ -1302,7 +1397,7 @@ const styles = StyleSheet.create({
   awardButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F39C12',
+    backgroundColor: '#ff9500',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -1350,7 +1445,7 @@ const styles = StyleSheet.create({
   linkRepoButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3498DB',
+    backgroundColor: '#ff9500',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -1652,28 +1747,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 8,
   },
-  modalButton: {
-    flex: 0.48,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#95A5A6',
-  },
-  cancelButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  confirmButton: {
-    backgroundColor: '#27AE60',
-  },
-  confirmButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   bugActionsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -1782,6 +1855,82 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     color: '#CCCCCC',
+  },
+  // New styles for enhanced bug details
+  detailText: {
+    fontSize: 14,
+    color: '#CCCCCC',
+    lineHeight: 20,
+  },
+  techDetails: {
+    gap: 12,
+  },
+  techRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  techLabel: {
+    fontSize: 14,
+    color: '#888888',
+    fontWeight: '600',
+    minWidth: 80,
+  },
+  techValue: {
+    fontSize: 14,
+    color: '#CCCCCC',
+    flex: 1,
+  },
+  repoLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2a2a2a',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  repoLinkText: {
+    fontSize: 14,
+    color: '#4ECDC4',
+    fontWeight: '600',
+    flex: 1,
+  },
+  attachmentsContainer: {
+    gap: 8,
+  },
+  attachmentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2a2a2a',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  attachmentName: {
+    fontSize: 14,
+    color: '#CCCCCC',
+    flex: 1,
+  },
+  attachmentSize: {
+    fontSize: 12,
+    color: '#888888',
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    flex: 1,
+    gap: 6,
+  },
+  tagChip: {
+    backgroundColor: '#ff9500',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  tagText: {
+    fontSize: 12,
+    color: '#000',
+    fontWeight: '600',
   },
 });
 

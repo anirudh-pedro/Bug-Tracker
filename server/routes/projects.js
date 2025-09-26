@@ -24,14 +24,12 @@ router.post('/', authenticate, async (req, res) => {
 			priority: priority || 'medium',
 			startDate: startDate ? new Date(startDate) : new Date(),
 			endDate: endDate ? new Date(endDate) : null,
-			owner: req.user._id,
-			members: [{ user: req.user._id, role: 'manager', joinedAt: new Date() }]
+			owner: req.user._id
 		});
 		
 		// Populate the project before returning
 		const populatedProject = await Project.findById(project._id)
-			.populate('owner', 'name email')
-			.populate('members.user', 'name email');
+			.populate('owner', 'name email');
 		
 		res.status(201).json({ success: true, data: { project: populatedProject } });
 	} catch (error) {
@@ -43,29 +41,24 @@ router.post('/', authenticate, async (req, res) => {
 // List all projects (authenticated users) - only show user's own projects
 router.get('/', authenticate, async (req, res) => {
 	try {
-		// Get projects where user is owner or member
+		// Get projects where user is owner
 		const projects = await Project.find({
-			$or: [
-				{ owner: req.user._id },
-				{ 'members.user': req.user._id }
-			]
+			owner: req.user._id
 		})
 		.populate('owner', 'name email')
-		.populate('members.user', 'name email')
 		.sort({ createdAt: -1 });
 		
 		// Add bug count for each project
 		const Bug = require('../models/Bug');
 		const projectsWithStats = await Promise.all(projects.map(async (project) => {
 			const bugCount = await Bug.countDocuments({ project: project._id });
-			const activeBugCount = await Bug.countDocuments({ project: project._id, status: { $in: ['open', 'in-progress'] } });
+			const resolvedBugCount = await Bug.countDocuments({ project: project._id, status: { $in: ['resolved', 'closed'] } });
 			
 			return {
 				...project.toObject(),
 				stats: {
 					totalBugs: bugCount,
-					activeBugs: activeBugCount,
-					memberCount: project.members.length
+					resolvedBugs: resolvedBugCount
 				}
 			};
 		}));
@@ -73,6 +66,52 @@ router.get('/', authenticate, async (req, res) => {
 		res.json({ success: true, data: { projects: projectsWithStats } });
 	} catch (error) {
 		console.error('Get projects error:', error);
+		res.status(500).json({ success: false, message: error.message });
+	}
+});
+
+// Get a single project by ID
+router.get('/:id', authenticate, async (req, res) => {
+	try {
+		// Find the project and check if user has access (owner only)
+		const project = await Project.findById(req.params.id)
+			.populate('owner', 'name email');
+		
+		if (!project) {
+			return res.status(404).json({ success: false, message: 'Project not found' });
+		}
+		
+		// Check if user has access to this project (owner only)
+		if (project.owner._id.toString() !== req.user._id.toString()) {
+			return res.status(403).json({ success: false, message: 'Access denied to this project' });
+		}
+		
+		// Add bug statistics
+		const Bug = require('../models/Bug');
+		const totalBugs = await Bug.countDocuments({ project: project._id });
+		const resolvedBugs = await Bug.countDocuments({ project: project._id, status: 'resolved' });
+		const closedBugs = await Bug.countDocuments({ project: project._id, status: 'closed' });
+		
+		// Get recent bugs for this project
+		const recentBugs = await Bug.find({ project: project._id })
+			.populate('reportedBy', 'name email')
+			.populate('assignedTo', 'name email')
+			.sort({ createdAt: -1 })
+			.limit(5);
+		
+		const projectWithStats = {
+			...project.toObject(),
+			stats: {
+				totalBugs,
+				resolvedBugs,
+				closedBugs
+			},
+			recentBugs
+		};
+		
+		res.json({ success: true, data: projectWithStats });
+	} catch (error) {
+		console.error('Get project details error:', error);
 		res.status(500).json({ success: false, message: error.message });
 	}
 });
@@ -115,8 +154,7 @@ router.put('/:id', authenticate, async (req, res) => {
 		
 		// Return populated project
 		const updatedProject = await Project.findById(project._id)
-			.populate('owner', 'name email')
-			.populate('members.user', 'name email');
+			.populate('owner', 'name email');
 		
 		res.json({ success: true, data: { project: updatedProject } });
 	} catch (error) {
@@ -139,19 +177,19 @@ router.delete('/:id', authenticate, async (req, res) => {
 			return res.status(403).json({ success: false, message: 'Only project owner can delete the project' });
 		}
 		
-		// Delete associated bugs first (optional - or you might want to prevent deletion if bugs exist)
+		// Delete associated bugs first (cascade deletion)
 		const Bug = require('../models/Bug');
 		const bugCount = await Bug.countDocuments({ project: project._id });
 		
 		if (bugCount > 0) {
-			return res.status(400).json({ 
-				success: false, 
-				message: `Cannot delete project with ${bugCount} associated bugs. Please resolve or transfer bugs first.` 
-			});
+			console.log(`🗑️ Deleting ${bugCount} associated bugs for project: ${project.name}`);
+			await Bug.deleteMany({ project: project._id });
+			console.log(`✅ Successfully deleted ${bugCount} associated bugs`);
 		}
 		
 		// Delete the project
 		await Project.findByIdAndDelete(req.params.id);
+		console.log(`✅ Successfully deleted project: ${project.name}`);
 		
 		res.json({ success: true, message: 'Project deleted successfully' });
 	} catch (error) {

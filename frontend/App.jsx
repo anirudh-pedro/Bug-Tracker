@@ -16,6 +16,7 @@ import GetStartedScreen from './src/screens/GetStartedScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProjectsScreen from './src/screens/ProjectsScreen';
+import ProjectDetailScreen from './src/screens/ProjectDetailScreen';
 import CreateProjectScreen from './src/screens/CreateProjectScreen';
 import CreateProjectTab from './src/screens/CreateProjectTab';
 import EnhancedBugsScreen from './src/screens/EnhancedBugsScreen';
@@ -26,7 +27,6 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import UserProfileScreen from './src/screens/UserProfileScreen';
 
 // Import components
-import CustomTabBar from './src/components/CustomTabBar';
 import LoadingScreen from './src/components/LoadingScreen';
 import { AUTH_CONFIG } from './src/config/authConfig';
 
@@ -409,6 +409,7 @@ const App = () => {
         <Stack.Navigator screenOptions={{headerShown: false}}>
           <Stack.Screen name="MainApp" component={TabNavigator} />
           <Stack.Screen name="EnhancedBugDetail" component={EnhancedBugDetailScreen} />
+          <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} />
           <Stack.Screen name="CreateProject" component={CreateProjectScreen} />
           <Stack.Screen name="Points" component={PointsScreen} />
           <Stack.Screen name="Dashboard" component={DashboardScreen} />

@@ -17,6 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { apiRequest } from '../utils/networkUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -82,19 +83,65 @@ const CreateBugReportScreen = ({navigation}) => {
   const categories = ['Bug', 'Feature', 'Improvement', 'Task', 'Story'];
 
   const selectImage = () => {
-    Alert.alert(
-      'Select Image',
-      'Image picker will be implemented with react-native-image-picker library',
-      [{text: 'OK'}]
-    );
+    const options = {
+      mediaType: 'photo',
+      includeBase64: false,
+      maxHeight: 2000,
+      maxWidth: 2000,
+      quality: 0.8,
+    };
+
+    launchImageLibrary(options, (response) => {
+      if (response.didCancel || response.errorMessage) {
+        return;
+      }
+
+      if (response.assets && response.assets[0]) {
+        const asset = response.assets[0];
+        const newAttachment = {
+          id: Date.now().toString(),
+          type: 'image',
+          name: asset.fileName || `image_${Date.now()}.jpg`,
+          uri: asset.uri,
+          size: asset.fileSize || 0,
+          mimeType: asset.type || 'image/jpeg',
+        };
+        
+        setAttachedFiles(prev => [...prev, newAttachment]);
+        setShowAttachmentModal(false);
+      }
+    });
   };
 
-  const takePhoto = async () => {
-    Alert.alert(
-      'Take Photo',
-      'Camera functionality will be implemented with react-native-image-picker library',
-      [{text: 'OK'}]
-    );
+  const takePhoto = () => {
+    const options = {
+      mediaType: 'photo',
+      includeBase64: false,
+      maxHeight: 2000,
+      maxWidth: 2000,
+      quality: 0.8,
+    };
+
+    launchCamera(options, (response) => {
+      if (response.didCancel || response.errorMessage) {
+        return;
+      }
+
+      if (response.assets && response.assets[0]) {
+        const asset = response.assets[0];
+        const newAttachment = {
+          id: Date.now().toString(),
+          type: 'image',
+          name: asset.fileName || `photo_${Date.now()}.jpg`,
+          uri: asset.uri,
+          size: asset.fileSize || 0,
+          mimeType: asset.type || 'image/jpeg',
+        };
+        
+        setAttachedFiles(prev => [...prev, newAttachment]);
+        setShowAttachmentModal(false);
+      }
+    });
   };
 
   const removeAttachment = (id) => {
@@ -155,7 +202,13 @@ const CreateBugReportScreen = ({navigation}) => {
           owner: repositoryUrl.trim().split('/').slice(-2, -1)[0] || ''
         } : null,
         bountyPoints: 10, // Default bounty points
-        tags: [selectedCategory.toLowerCase(), selectedPriority.toLowerCase()]
+        tags: [selectedCategory.toLowerCase(), selectedPriority.toLowerCase()],
+        attachments: attachedFiles.map(file => ({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          mimeType: file.mimeType
+        }))
       };
 
       console.log('🐛 Submitting bug report:', JSON.stringify(bugReport, null, 2));
@@ -452,13 +505,35 @@ const CreateBugReportScreen = ({navigation}) => {
                 <View style={styles.attachmentsList}>
                   {attachedFiles.map((file) => (
                     <View key={file.id} style={styles.attachmentItem}>
-                      <Icon name="image" size={16} color="#ff9500" />
-                      <Text style={styles.attachmentName} numberOfLines={1}>
-                        {file.name}
-                      </Text>
-                      <TouchableOpacity onPress={() => removeAttachment(file.id)}>
-                        <Icon name="close" size={16} color="#ff4757" />
-                      </TouchableOpacity>
+                      {file.type === 'image' ? (
+                        <View style={styles.imageAttachment}>
+                          <Image source={{uri: file.uri}} style={styles.attachmentThumbnail} />
+                          <View style={styles.attachmentInfo}>
+                            <Text style={styles.attachmentName} numberOfLines={1}>
+                              {file.name}
+                            </Text>
+                            <Text style={styles.attachmentSize}>
+                              {(file.size / 1024).toFixed(1)} KB
+                            </Text>
+                          </View>
+                          <TouchableOpacity 
+                            style={styles.removeButton}
+                            onPress={() => removeAttachment(file.id)}
+                          >
+                            <Icon name="close" size={18} color="#ff4757" />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View style={styles.fileAttachment}>
+                          <Icon name="attach-file" size={16} color="#ff9500" />
+                          <Text style={styles.attachmentName} numberOfLines={1}>
+                            {file.name}
+                          </Text>
+                          <TouchableOpacity onPress={() => removeAttachment(file.id)}>
+                            <Icon name="close" size={16} color="#ff4757" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
                     </View>
                   ))}
                 </View>
@@ -782,7 +857,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   submitButton: {
-    backgroundColor: '#ff6b6b',
+    backgroundColor: '#ff9500',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -899,6 +974,37 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     color: '#cccccc',
+  },
+  imageAttachment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    gap: 12,
+  },
+  fileAttachment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    gap: 8,
+  },
+  attachmentThumbnail: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    backgroundColor: '#222',
+  },
+  attachmentInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  attachmentSize: {
+    fontSize: 10,
+    color: '#888',
+  },
+  removeButton: {
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 71, 87, 0.1)',
   },
   attachmentModalOverlay: {
     flex: 1,

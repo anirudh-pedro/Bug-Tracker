@@ -45,21 +45,6 @@ const projectSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  members: [{
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    role: {
-      type: String,
-      enum: ['developer', 'tester', 'manager', 'viewer'],
-      default: 'developer'
-    },
-    joinedAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
   // Project settings
   settings: {
     allowPublicView: {
@@ -78,10 +63,6 @@ const projectSchema = new mongoose.Schema({
   // Statistics
   stats: {
     totalBugs: {
-      type: Number,
-      default: 0
-    },
-    openBugs: {
       type: Number,
       default: 0
     },

@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ff6b6b',
+    backgroundColor: '#ff9500',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -849,7 +849,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#667eea',
+    backgroundColor: '#ff9500',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
