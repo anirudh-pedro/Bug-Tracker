@@ -57,6 +57,11 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
   const [userSuggestions, setUserSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
+  
+  // Nested comments states
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [expandedComments, setExpandedComments] = useState(new Set());
+  const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
     loadBugDetails();
@@ -425,6 +430,136 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
       console.error('💥 Error finding mentioned user:', error);
       Alert.alert('Error', 'Failed to find user');
     }
+  };
+
+  // Handle nested comment functions
+  const handleReplyTo = (comment) => {
+    setReplyingTo(comment);
+    setReplyText(`@${comment.author?.name || 'User'} `);
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+    setReplyText('');
+  };
+
+  const submitReply = async () => {
+    if (!replyText.trim() || !replyingTo) return;
+
+    try {
+      const response = await apiRequest(`/api/bugs/${bugId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({
+          content: replyText.trim(),
+          parentCommentId: replyingTo._id || replyingTo.id,
+          replyingTo: replyingTo.author?.name || 'User'
+        })
+      });
+
+      if (response.success) {
+        await loadBugDetails();
+        setReplyingTo(null);
+        setReplyText('');
+      } else {
+        Alert.alert('Error', response.message || 'Failed to post reply');
+      }
+    } catch (error) {
+      console.error('Error posting reply:', error);
+      Alert.alert('Error', 'Failed to post reply');
+    }
+  };
+
+  const toggleCommentExpansion = (commentId) => {
+    const newExpanded = new Set(expandedComments);
+    if (newExpanded.has(commentId)) {
+      newExpanded.delete(commentId);
+    } else {
+      newExpanded.add(commentId);
+    }
+    setExpandedComments(newExpanded);
+  };
+
+  const renderComment = (comment, depth = 0, isReply = false) => {
+    const commentId = comment._id || comment.id || `${comment.author?.name}-${comment.createdAt}`;
+    const isExpanded = expandedComments.has(commentId);
+    const hasReplies = comment.replies && comment.replies.length > 0;
+    const maxDepth = 3; // Limit nesting depth
+    
+    return (
+      <View key={commentId} style={[
+        styles.commentItem,
+        isReply && styles.replyComment,
+        { marginLeft: Math.min(depth * 20, maxDepth * 20) },
+        comment.isResolutionComment && styles.resolutionComment
+      ]}>
+        <View style={styles.commentHeader}>
+          <TouchableOpacity 
+            onPress={() => handleUsernameClick(comment)}
+            disabled={!(comment.author && (comment.author._id || comment.author.id || comment.author.name))}
+          >
+            <Text style={[
+              styles.commentAuthor,
+              (comment.author && (comment.author._id || comment.author.id || comment.author.name)) && styles.clickableUsername
+            ]}>
+              {comment.author?.name || 'Unknown User'}
+              {isReply && ' (Reply)'}
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.commentTime}>
+            {new Date(comment.createdAt).toLocaleDateString()}
+          </Text>
+        </View>
+        
+        {renderCommentWithMentions(comment.content || '')}
+        
+        {comment.pointsAwarded > 0 && (
+          <View style={styles.pointsAwarded}>
+            <Icon name="stars" size={16} color="#ff9500" />
+            <Text style={styles.pointsAwardedText}>
+              {comment.pointsAwarded} points awarded!
+            </Text>
+          </View>
+        )}
+
+        {/* Comment Actions */}
+        <View style={styles.commentActions}>
+          {depth < maxDepth && (
+            <TouchableOpacity 
+              style={styles.replyButton}
+              onPress={() => handleReplyTo(comment)}
+            >
+              <Icon name="reply" size={14} color="#ff9500" />
+              <Text style={styles.replyButtonText}>Reply</Text>
+            </TouchableOpacity>
+          )}
+          
+          {hasReplies && (
+            <TouchableOpacity 
+              style={styles.expandButton}
+              onPress={() => toggleCommentExpansion(commentId)}
+            >
+              <Icon 
+                name={isExpanded ? "expand-less" : "expand-more"} 
+                size={16} 
+                color="#888888" 
+              />
+              <Text style={styles.expandButtonText}>
+                {isExpanded ? 'Hide' : 'Show'} {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Render replies if expanded */}
+        {hasReplies && isExpanded && (
+          <View style={styles.repliesContainer}>
+            {comment.replies.map(reply => 
+              renderComment(reply, depth + 1, true)
+            )}
+          </View>
+        )}
+      </View>
+    );
   };
 
   const awardPoints = async () => {
@@ -926,76 +1061,48 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
             </TouchableOpacity>
           </View>
 
-          {bug.comments && bug.comments.map((comment, index) => {
-            // Check if comment mentions PR or pull request
-            const hasPRMention = /pull request|PR|pr|merge request/i.test(comment.content);
-            const prUrlMatch = comment.content.match(/https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/(\d+)/i);
-            
-            return (
-              <View key={index} style={[
-                styles.commentItem,
-                comment.isResolutionComment && styles.resolutionComment,
-                hasPRMention && styles.prMentionComment
-              ]}>
-                <View style={styles.commentHeader}>
-                  <TouchableOpacity 
-                    onPress={(comment.author && (comment.author._id || comment.author.id || comment.author.name)) ? () => handleUsernameClick(comment) : null}
-                    onLongPress={comment.author ? () => handleUsernameLongPress(comment) : null}
-                    disabled={!(comment.author && (comment.author._id || comment.author.id || comment.author.name))}
-                  >
-                    <Text style={[
-                      styles.commentAuthor,
-                      (comment.author && (comment.author._id || comment.author.id || comment.author.name)) && styles.clickableUsername
-                    ]}>
-                      {comment.author?.name || 'Unknown User'}
-                      {hasPRMention && ' 🔀'}
-                    </Text>
-                  </TouchableOpacity>
-                  <Text style={styles.commentTime}>
-                    {new Date(comment.createdAt).toLocaleDateString()}
-                  </Text>
-                </View>
-                
-                {renderCommentWithMentions(comment.content || '')}
-                
-                {/* Show PR link if detected */}
-                {prUrlMatch && (
-                  <TouchableOpacity 
-                    style={styles.prLinkContainer}
-                    onPress={() => openUrl(prUrlMatch[0])}
-                  >
-                    <Icon name="code" size={16} color="#4ECDC4" />
-                    <Text style={styles.detectedPrLink}>
-                      Pull Request #{prUrlMatch[1]}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                
-                {comment.pointsAwarded > 0 && (
-                  <View style={styles.pointsAwarded}>
-                    <Icon name="stars" size={16} color="#F39C12" />
-                    <Text style={styles.pointsAwardedText}>
-                      {comment.pointsAwarded} points awarded!
-                    </Text>
-                  </View>
-                )}
-                
-                {comment.githubProfile && (
-                  <TouchableOpacity onPress={() => openUrl(comment.githubProfile)}>
-                    <Text style={styles.githubLink}>View GitHub Profile</Text>
-                  </TouchableOpacity>
-                )}
-                
-                {/* Show award points hint for bug reporter */}
-                {currentUser && bug && currentUser.id === bug.reportedBy._id && 
-                 comment.pointsAwarded === 0 && hasPRMention && (
-                  <Text style={styles.awardHint}>
-                    💡 Tap username to view profile • Long press to award points
-                  </Text>
-                )}
-              </View>
-            );
+          {bug.comments && bug.comments.map((comment) => {
+            // Only render top-level comments (no parentCommentId)
+            if (comment.parentCommentId) return null;
+            return renderComment(comment, 0, false);
           })}
+
+          {/* Reply Input */}
+          {replyingTo && (
+            <View style={styles.replyInputContainer}>
+              <View style={styles.replyHeader}>
+                <Text style={styles.replyingToText}>
+                  Replying to @{replyingTo.author?.name || 'User'}
+                </Text>
+                <TouchableOpacity onPress={cancelReply}>
+                  <Icon name="close" size={20} color="#888888" />
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                style={styles.replyInput}
+                placeholder="Write your reply..."
+                placeholderTextColor="#888888"
+                multiline
+                value={replyText}
+                onChangeText={setReplyText}
+              />
+              <View style={styles.replyActions}>
+                <TouchableOpacity 
+                  style={styles.cancelReplyButton}
+                  onPress={cancelReply}
+                >
+                  <Text style={styles.cancelReplyText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.submitReplyButton}
+                  onPress={submitReply}
+                  disabled={!replyText.trim()}
+                >
+                  <Text style={styles.submitReplyText}>Reply</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -1930,6 +2037,98 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 12,
     color: '#000',
+    fontWeight: '600',
+  },
+  // Nested comments styles
+  replyComment: {
+    borderLeftWidth: 2,
+    borderLeftColor: '#ff9500',
+    backgroundColor: '#1a1a1a',
+  },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 16,
+  },
+  replyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  replyButtonText: {
+    fontSize: 12,
+    color: '#ff9500',
+    fontWeight: '500',
+  },
+  expandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  expandButtonText: {
+    fontSize: 12,
+    color: '#888888',
+  },
+  repliesContainer: {
+    marginTop: 8,
+  },
+  replyInputContainer: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: '#ff9500',
+  },
+  replyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  replyingToText: {
+    fontSize: 14,
+    color: '#ff9500',
+    fontWeight: '600',
+  },
+  replyInput: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 8,
+    padding: 12,
+    color: '#ffffff',
+    fontSize: 14,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  replyActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 12,
+  },
+  cancelReplyButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    backgroundColor: '#333333',
+  },
+  cancelReplyText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  submitReplyButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    backgroundColor: '#ff9500',
+  },
+  submitReplyText: {
+    color: '#000000',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

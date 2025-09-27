@@ -54,13 +54,21 @@ const UserProfileScreen = ({ route, navigation }) => {
         apiRequest(`/api/users/stats/${userId}`)
       ]);
 
+      console.log('📦 Profile API Response:', JSON.stringify(profileResponse, null, 2));
+      console.log('📊 Stats API Response:', JSON.stringify(statsResponse, null, 2));
+
       if (profileResponse.success) {
-        setUserProfile(profileResponse.data.user);
+        console.log('👤 Setting user profile:', profileResponse.data?.user || profileResponse.data);
+        // Handle different response structures
+        const userData = profileResponse.data?.user || profileResponse.data;
+        setUserProfile(userData);
       }
 
       if (statsResponse.success) {
-        setUserStats(statsResponse.data.stats);
-        setRecentActivity(statsResponse.data.recentActivity || []);
+        console.log('📈 Setting user stats:', statsResponse.data?.stats || statsResponse.data);
+        const statsData = statsResponse.data?.stats || statsResponse.data;
+        setUserStats(statsData);
+        setRecentActivity(statsResponse.data?.recentActivity || []);
       }
 
     } catch (error) {
