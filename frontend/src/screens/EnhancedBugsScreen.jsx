@@ -17,6 +17,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { apiRequest } from '../utils/enhancedNetworkUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Colors, getStatusColor, getPriorityColor } from '../theme/colors';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -85,7 +86,7 @@ const EnhancedBugsScreen = ({navigation, route}) => {
 
   useEffect(() => {
     applyFilters();
-  }, [applyFilters, bugs, loading]);
+  }, [applyFilters, bugs, loading, activeSection]);
 
   const loadCurrentUser = async () => {
     try {
@@ -258,6 +259,8 @@ const EnhancedBugsScreen = ({navigation, route}) => {
   }, []);
 
   const applyFilters = useCallback(() => {
+    console.log('🔍 applyFilters: Starting - loading:', loading, 'bugs.length:', bugs.length, 'activeSection:', activeSection);
+    
     // Don't apply filters if we're still loading or have no bugs
     if (loading || bugs.length === 0) {
       console.log('🔍 applyFilters: Skipping - loading:', loading, 'bugs.length:', bugs.length);
@@ -268,6 +271,8 @@ const EnhancedBugsScreen = ({navigation, route}) => {
     // Get base data based on active section
     let filtered = activeSection === 'my-bugs' ? getMyBugs() : getGlobalBugs();
     console.log('🔍 applyFilters: activeSection =', activeSection);
+    console.log('🔍 applyFilters: base filtered count =', filtered.length);
+    console.log('🔍 applyFilters: first bug sample =', filtered[0] ? { title: filtered[0].title, reportedBy: filtered[0].reportedBy?.name } : 'none');
     console.log('🔍 applyFilters: base filtered count =', filtered.length);
 
     // Apply search filter
@@ -326,25 +331,7 @@ const EnhancedBugsScreen = ({navigation, route}) => {
     setSelectedProject('All');
   };
 
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase().replace('-', '')) {
-      case 'open': return '#FF6B6B';
-      case 'inprogress': return '#4ECDC4';
-      case 'resolved': return '#45B7D1';
-      case 'closed': return '#6C5CE7';
-      default: return '#95A5A6';
-    }
-  };
 
-  const getPriorityColor = (priority) => {
-    switch (priority?.toLowerCase()) {
-      case 'critical': return '#E74C3C';
-      case 'high': return '#E67E22';
-      case 'medium': return '#F39C12';
-      case 'low': return '#27AE60';
-      default: return '#95A5A6';
-    }
-  };
 
   const getTimeAgo = (dateString) => {
     const now = new Date();
@@ -418,22 +405,22 @@ const EnhancedBugsScreen = ({navigation, route}) => {
         <View style={styles.bugStats}>
           {bug.comments && bug.comments.length > 0 && (
             <View style={styles.statItem}>
-              <Icon name="comment" size={16} color="#666" />
+              <Icon name="comment" size={16} color={Colors.text.muted} />
               <Text style={styles.statText}>{bug.comments.length}</Text>
             </View>
           )}
           
           {bug.pullRequests && bug.pullRequests.length > 0 && (
             <View style={styles.statItem}>
-              <Icon name="merge-type" size={16} color="#666" />
+              <Icon name="merge-type" size={16} color={Colors.text.muted} />
               <Text style={styles.statText}>{bug.pullRequests.length}</Text>
             </View>
           )}
           
           {bug.pointsAwarded > 0 && (
             <View style={styles.statItem}>
-              <Icon name="stars" size={16} color="#F39C12" />
-              <Text style={[styles.statText, { color: '#F39C12' }]}>{bug.pointsAwarded}</Text>
+              <Icon name="stars" size={16} color={Colors.accent.yellow} />
+              <Text style={[styles.statText, { color: Colors.accent.yellow }]}>{bug.pointsAwarded}</Text>
             </View>
           )}
         </View>
@@ -452,7 +439,7 @@ const EnhancedBugsScreen = ({navigation, route}) => {
             style={styles.actionButton}
             onPress={() => handleEditBug(bug)}
           >
-            <Icon name="edit" size={16} color="#3498DB" />
+            <Icon name="edit" size={16} color={Colors.accent.blue} />
             <Text style={styles.actionButtonText}>Edit</Text>
           </TouchableOpacity>
           
@@ -460,8 +447,8 @@ const EnhancedBugsScreen = ({navigation, route}) => {
             style={[styles.actionButton, styles.deleteActionButton]}
             onPress={() => handleDeleteBug(bug)}
           >
-            <Icon name="delete" size={16} color="#E74C3C" />
-            <Text style={[styles.actionButtonText, { color: '#E74C3C' }]}>Delete</Text>
+            <Icon name="delete" size={16} color={Colors.status.danger} />
+            <Text style={[styles.actionButtonText, { color: Colors.status.danger }]}>Delete</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -474,11 +461,11 @@ const EnhancedBugsScreen = ({navigation, route}) => {
         <View style={styles.filterModalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Filter Bugs</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setShowFilterModal(false)}
               style={styles.closeButton}
             >
-              <Icon name="close" size={24} color="#666" />
+              <Icon name="close" size={24} color={Colors.text.muted} />
             </TouchableOpacity>
           </View>
 
@@ -581,7 +568,7 @@ const EnhancedBugsScreen = ({navigation, route}) => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3498DB" />
+          <ActivityIndicator size="large" color={Colors.accent.blue} />
           <Text style={styles.loadingText}>Loading bugs...</Text>
         </View>
       </SafeAreaView>
@@ -604,7 +591,7 @@ const EnhancedBugsScreen = ({navigation, route}) => {
             style={styles.filterButton}
             onPress={() => setShowFilterModal(true)}
           >
-            <Icon name="filter-list" size={24} color="#2E3A59" />
+            <Icon name="filter-list" size={24} color={Colors.text.primary} />
             {(selectedStatus !== 'All' || selectedPriority !== 'All' || selectedProject !== 'All') && (
               <View style={styles.filterIndicator} />
             )}
@@ -613,7 +600,7 @@ const EnhancedBugsScreen = ({navigation, route}) => {
             style={styles.refreshButton}
             onPress={handleRefresh}
           >
-            <Icon name="refresh" size={24} color="#2E3A59" />
+            <Icon name="refresh" size={24} color={Colors.text.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -781,7 +768,7 @@ const EnhancedBugsScreen = ({navigation, route}) => {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Bug</Text>
               <TouchableOpacity onPress={() => setShowEditModal(false)}>
-                <Icon name="close" size={24} color="#666" />
+                <Icon name="close" size={24} color={Colors.text.muted} />
               </TouchableOpacity>
             </View>
 
@@ -920,18 +907,18 @@ const EnhancedBugsScreen = ({navigation, route}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background.primary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background.primary,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   header: {
     flexDirection: 'row',
@@ -939,14 +926,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: Colors.border.light,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   headerActions: {
     flexDirection: 'row',
@@ -964,7 +951,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#E74C3C',
+    backgroundColor: Colors.status.danger,
   },
   refreshButton: {
     padding: 8,
@@ -974,9 +961,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: Colors.border.light,
   },
   sectionTab: {
     flex: 1,
@@ -987,14 +974,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 8,
     marginHorizontal: 4,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.background.card,
     borderWidth: 2,
-    borderColor: '#444444',
+    borderColor: Colors.border.medium,
   },
   sectionTabActive: {
-    backgroundColor: '#ff9500',
-    borderColor: '#ff9500',
-    shadowColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
+    borderColor: Colors.primary.main,
+    shadowColor: Colors.primary.main,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -1003,61 +990,61 @@ const styles = StyleSheet.create({
   sectionTabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginLeft: 6,
   },
   sectionTabTextActive: {
-    color: '#000000',
+    color: Colors.primary.text,
     fontWeight: '700',
   },
   sectionHeader: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: Colors.border.light,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 4,
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#999999',
+    color: Colors.text.muted,
     lineHeight: 18,
   },
   searchContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: Colors.border.light,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.background.card,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#444444',
+    borderColor: Colors.border.medium,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
     marginLeft: 8,
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   statsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: Colors.border.light,
   },
   statCard: {
     flex: 1,
@@ -1066,11 +1053,11 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   statLabel: {
     fontSize: 12,
-    color: '#888888',
+    color: Colors.text.muted,
     marginTop: 2,
   },
   activeFilters: {

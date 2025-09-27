@@ -1,13 +1,13 @@
 // Auth Configuration
 export const AUTH_CONFIG = {
-  // Backend endpoints - for WiFi connected device  
+  // Backend endpoints - for Ethernet connected device  
   BACKEND_URL: __DEV__ 
-    ? 'http://10.178.105.115:5000' // Working Wi-Fi IP
+    ? 'http://172.16.8.229:5000' // Ethernet IP
     : 'https://your-production-api.com',
   
   // Fallback URLs for connectivity issues
   FALLBACK_URLS: __DEV__ 
-    ? ['http://10.178.105.115:5000', 'http://localhost:5000', 'http://172.31.80.1:5000', 'http://10.0.2.2:5000']
+    ? ['http://172.16.8.229:5000', 'http://10.178.105.115:5000', 'http://localhost:5000', 'http://172.31.80.1:5000', 'http://10.0.2.2:5000']
     : [],
   
   // Google Sign-In

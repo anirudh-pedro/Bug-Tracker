@@ -182,8 +182,14 @@ const getBugById = async (req, res) => {
     }
 
     console.log('🔍 Searching for bug with identifier:', identifier);
-    const bug = await findBugByIdOrBugId(identifier);
+    const bug = await getBugWithStandardPopulation(identifier);
     console.log('📋 Bug lookup result:', bug ? 'FOUND' : 'NOT FOUND');
+    if (bug) {
+      console.log('📋 Bug populated data check:', {
+        reportedBy: bug.reportedBy,
+        hasReportedByName: !!bug.reportedBy?.name
+      });
+    }
 
     if (!bug) {
       return res.status(404).json(createErrorResponse(

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { Colors, getStatusColor, getPriorityColor } from '../theme/colors';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -162,31 +163,11 @@ const DashboardScreen = () => {
 
   // Get stats from filtered data
   const stats = [
-    {id: 1, title: 'Total Bugs', count: filteredBugs.length, icon: 'bug-report', color: '#ff9500'},
-    {id: 2, title: 'Open Issues', count: filteredBugs.filter(b => b.status === 'Open').length, icon: 'error', color: '#ff9500'},
-    {id: 3, title: 'In Progress', count: filteredBugs.filter(b => b.status === 'In Progress').length, icon: 'schedule', color: '#ff9500'},
-    {id: 4, title: 'Resolved', count: filteredBugs.filter(b => b.status === 'Resolved').length, icon: 'check-circle', color: '#ff9500'},
+    {id: 1, title: 'Total Bugs', count: filteredBugs.length, icon: 'bug-report', color: Colors.primary.main},
+    {id: 2, title: 'Open Issues', count: filteredBugs.filter(b => b.status === 'Open').length, icon: 'error', color: Colors.primary.main},
+    {id: 3, title: 'In Progress', count: filteredBugs.filter(b => b.status === 'In Progress').length, icon: 'schedule', color: Colors.primary.main},
+    {id: 4, title: 'Resolved', count: filteredBugs.filter(b => b.status === 'Resolved').length, icon: 'check-circle', color: Colors.primary.main},
   ];
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'Critical': return '#ff4757';
-      case 'High': return '#ff9500';
-      case 'Medium': return '#ffa502';
-      case 'Low': return '#2ed573';
-      default: return '#888888';
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Open': return '#ff9500';
-      case 'In Progress': return '#3742fa';
-      case 'Resolved': return '#2ed573';
-      case 'Closed': return '#747d8c';
-      default: return '#888888';
-    }
-  };
 
   const formatTimeAgo = (dateString) => {
     const now = new Date();

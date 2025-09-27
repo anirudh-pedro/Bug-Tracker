@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { apiRequest } from '../utils/enhancedNetworkUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
+import { Colors, getStatusColor, getPriorityColor, CommonStyles } from '../theme/colors';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -79,25 +80,13 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
     }
   };
 
-  // Helper functions for styling
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'open': return { backgroundColor: '#E74C3C' };
-      case 'in progress': return { backgroundColor: '#ff9500' };
-      case 'resolved': return { backgroundColor: '#27AE60' };
-      case 'closed': return { backgroundColor: '#95A5A6' };
-      default: return { backgroundColor: '#666666' };
-    }
+  // Helper functions for styling using centralized theme
+  const getStatusColorStyle = (status) => {
+    return { backgroundColor: getStatusColor(status) };
   };
 
-  const getPriorityColor = (priority) => {
-    switch (priority?.toLowerCase()) {
-      case 'critical': return { backgroundColor: '#8E44AD' };
-      case 'high': return { backgroundColor: '#E74C3C' };
-      case 'medium': return { backgroundColor: '#ff9500' };
-      case 'low': return { backgroundColor: '#27AE60' };
-      default: return { backgroundColor: '#666666' };
-    }
+  const getPriorityColorStyle = (priority) => {
+    return { backgroundColor: getPriorityColor(priority) };
   };
 
   const loadBugDetails = async () => {
@@ -112,6 +101,9 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
 
       if (bugResponse.success) {
         console.log('🐛 Bug API response:', bugResponse.data);
+        console.log('🔍 Available bug fields:', Object.keys(bugResponse.data));
+        console.log('🔍 Reporter data:', bugResponse.data.reportedBy);
+        // console.log('🔍 Full bug response data:', JSON.stringify(bugResponse.data, null, 2));
         setBug(bugResponse.data);
       }
 
@@ -514,7 +506,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
         
         {comment.pointsAwarded > 0 && (
           <View style={styles.pointsAwarded}>
-            <Icon name="stars" size={16} color="#ff9500" />
+            <Icon name="stars" size={16} color={Colors.primary.main} />
             <Text style={styles.pointsAwardedText}>
               {comment.pointsAwarded} points awarded!
             </Text>
@@ -528,7 +520,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
               style={styles.replyButton}
               onPress={() => handleReplyTo(comment)}
             >
-              <Icon name="reply" size={14} color="#ff9500" />
+              <Icon name="reply" size={14} color={Colors.primary.main} />
               <Text style={styles.replyButtonText}>Reply</Text>
             </TouchableOpacity>
           )}
@@ -541,7 +533,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
               <Icon 
                 name={isExpanded ? "expand-less" : "expand-more"} 
                 size={16} 
-                color="#888888" 
+                color={Colors.text.muted} 
               />
               <Text style={styles.expandButtonText}>
                 {isExpanded ? 'Hide' : 'Show'} {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
@@ -629,10 +621,30 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
   };
 
   const openUrl = (url) => {
-    Linking.openURL(url).catch(err => {
+    if (!url || typeof url !== 'string' || url.trim() === '') {
+      console.error('Invalid URL:', url);
+      Alert.alert('Error', 'Invalid URL provided');
+      return;
+    }
+    
+    Linking.openURL(url.trim()).catch(err => {
       console.error('Error opening URL:', err);
       Alert.alert('Error', 'Could not open URL');
     });
+  };
+
+  const handleUserPress = (user) => {
+    if (user && (user._id || user.id)) {
+      console.log('Navigating to user profile:', user);
+      navigation.navigate('UserProfile', {
+        userId: user._id || user.id,
+        userName: user.name || user.username || 'Unknown User',
+        bugId: bugId,
+        timestamp: Date.now()
+      });
+    } else {
+      Alert.alert('Error', 'User information not available');
+    }
   };
 
   const handleUsernameClick = async (comment) => {
@@ -793,11 +805,11 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Icon name="arrow-back" size={24} color="#2E3A59" />
+          <Icon name="arrow-back" size={24} color={Colors.iconPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Bug Details</Text>
         <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
-          <Icon name="refresh" size={24} color="#2E3A59" />
+          <Icon name="refresh" size={24} color={Colors.iconPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -810,10 +822,10 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
         {/* Bug Header */}
         <View style={styles.bugHeader}>
           <View style={styles.statusRow}>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(bug.status) }]}>
+            <View style={[styles.statusBadge, getStatusColorStyle(bug.status)]}>
               <Text style={styles.statusText}>{bug.status?.toUpperCase()}</Text>
             </View>
-            <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(bug.priority) }]}>
+            <View style={[styles.priorityBadge, getPriorityColorStyle(bug.priority)]}>
               <Text style={styles.priorityText}>{bug.priority?.toUpperCase()}</Text>
             </View>
           </View>
@@ -823,7 +835,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
           
           <View style={styles.metaInfo}>
             <Text style={styles.metaText}>
-              Reported by {bug.reportedBy?.name} • {new Date(bug.createdAt).toLocaleDateString()}
+              Reported by {bug.reportedBy?.name || bug.reportedBy?.username || 'Unknown User'} • {new Date(bug.createdAt).toLocaleDateString()}
             </Text>
             {bug.resolvedBy && (
               <Text style={styles.metaText}>
@@ -839,7 +851,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
                 style={styles.editButton}
                 onPress={handleEditBug}
               >
-                <Icon name="edit" size={18} color="#3498DB" />
+                <Icon name="edit" size={18} color={Colors.accent.blue} />
                 <Text style={styles.editButtonText}>Edit Bug</Text>
               </TouchableOpacity>
               
@@ -847,7 +859,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
                 style={styles.deleteButton}
                 onPress={handleDeleteBug}
               >
-                <Icon name="delete" size={18} color="#E74C3C" />
+                <Icon name="delete" size={18} color={Colors.status.danger} />
                 <Text style={styles.deleteButtonText}>Delete Bug</Text>
               </TouchableOpacity>
             </View>
@@ -858,7 +870,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
         {(bug.bountyPoints > 0 || bug.pointsAwarded > 0) && (
           <View style={styles.pointsSection}>
             <View style={styles.pointsHeader}>
-              <Icon name="stars" size={24} color="#F39C12" />
+              <Icon name="stars" size={24} color={Colors.accent.yellow} />
               <Text style={styles.pointsTitle}>Points & Rewards</Text>
             </View>
             {bug.bountyPoints > 0 && (
@@ -876,7 +888,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
                 style={styles.awardButton}
                 onPress={() => setShowAwardPointsModal(true)}
               >
-                <Icon name="card-giftcard" size={20} color="#FFF" />
+                <Icon name="card-giftcard" size={20} color={Colors.text.primary} />
                 <Text style={styles.awardButtonText}>Award Points</Text>
               </TouchableOpacity>
             )}
@@ -886,11 +898,11 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
         {/* GitHub Integration Section */}
         <View style={styles.githubSection}>
           <View style={styles.sectionHeader}>
-            <Icon name="code" size={24} color="#333" />
+            <Icon name="code" size={24} color={Colors.text.muted} />
             <Text style={styles.sectionTitle}>GitHub Integration</Text>
           </View>
 
-          {githubActivity?.githubRepo ? (
+          {githubActivity?.githubRepo?.url ? (
             <View style={styles.repoInfo}>
               <Text style={styles.repoUrl}>{githubActivity.githubRepo.url}</Text>
               <TouchableOpacity onPress={() => openUrl(githubActivity.githubRepo.url)}>
@@ -903,7 +915,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
                 style={styles.linkRepoButton}
                 onPress={() => setShowGithubLinkModal(true)}
               >
-                <Icon name="link" size={20} color="#FFF" />
+                <Icon name="link" size={20} color={Colors.text.primary} />
                 <Text style={styles.linkRepoText}>Link GitHub Repository</Text>
               </TouchableOpacity>
             )
@@ -914,48 +926,102 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
 
 
 
-        {/* Bug Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Description</Text>
-          <Text style={styles.description}>{bug.description}</Text>
+        {/* Description */}
+        <View style={styles.enhancedSection}>
+          <View style={styles.sectionHeaderWithIcon}>
+            <Icon name="description" size={20} color={Colors.primary.main} />
+            <Text style={styles.enhancedSectionTitle}>Description</Text>
+          </View>
+          <View style={styles.contentCard}>
+            <Text style={styles.description}>{bug.description}</Text>
+          </View>
         </View>
 
-        {/* Steps to Reproduce */}
-        {bug.stepsToReproduce && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Steps to Reproduce</Text>
-            <Text style={styles.detailText}>{bug.stepsToReproduce}</Text>
+        {/* Bug Details Grid */}
+        <View style={styles.enhancedSection}>
+          <View style={styles.sectionHeaderWithIcon}>
+            <Icon name="bug-report" size={20} color={Colors.primary.main} />
+            <Text style={styles.enhancedSectionTitle}>Bug Information</Text>
           </View>
-        )}
+          <View style={styles.gridContainer}>
+            {/* Steps to Reproduce */}
+            {bug.stepsToReproduce && (
+              <View style={styles.detailCard}>
+                <View style={styles.cardHeader}>
+                  <Icon name="list" size={16} color={Colors.accent.blue} />
+                  <Text style={styles.cardTitle}>Steps to Reproduce</Text>
+                </View>
+                <Text style={styles.cardContent}>{bug.stepsToReproduce}</Text>
+              </View>
+            )}
 
-        {/* Expected Behavior */}
-        {bug.expectedBehavior && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Expected Behavior</Text>
-            <Text style={styles.detailText}>{bug.expectedBehavior}</Text>
-          </View>
-        )}
+            {/* Expected Behavior */}
+            {bug.expectedBehavior && (
+              <View style={styles.detailCard}>
+                <View style={styles.cardHeader}>
+                  <Icon name="check-circle" size={16} color={Colors.status.success} />
+                  <Text style={styles.cardTitle}>Expected Behavior</Text>
+                </View>
+                <Text style={styles.cardContent}>{bug.expectedBehavior}</Text>
+              </View>
+            )}
 
-        {/* Actual Behavior */}
-        {bug.actualBehavior && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Actual Behavior</Text>
-            <Text style={styles.detailText}>{bug.actualBehavior}</Text>
-          </View>
-        )}
+            {/* Actual Behavior */}
+            {bug.actualBehavior && (
+              <View style={styles.detailCard}>
+                <View style={styles.cardHeader}>
+                  <Icon name="error" size={16} color={Colors.status.danger} />
+                  <Text style={styles.cardTitle}>Actual Behavior</Text>
+                </View>
+                <Text style={styles.cardContent}>{bug.actualBehavior}</Text>
+              </View>
+            )}
 
-        {/* Environment */}
-        {bug.environment && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Environment</Text>
-            <Text style={styles.detailText}>{bug.environment}</Text>
+            {/* Environment */}
+            {bug.environment && (bug.environment.os || bug.environment.browser || bug.environment.version || bug.environment.device) && (
+              <View style={styles.detailCard}>
+                <View style={styles.cardHeader}>
+                  <Icon name="computer" size={16} color={Colors.accent.purple} />
+                  <Text style={styles.cardTitle}>Environment</Text>
+                </View>
+                <View style={styles.environmentDetails}>
+                  {bug.environment.os && (
+                    <Text style={styles.cardContent}>
+                      <Text style={styles.environmentLabel}>OS: </Text>
+                      {bug.environment.os}
+                    </Text>
+                  )}
+                  {bug.environment.browser && (
+                    <Text style={styles.cardContent}>
+                      <Text style={styles.environmentLabel}>Browser: </Text>
+                      {bug.environment.browser}
+                    </Text>
+                  )}
+                  {bug.environment.version && (
+                    <Text style={styles.cardContent}>
+                      <Text style={styles.environmentLabel}>Version: </Text>
+                      {bug.environment.version}
+                    </Text>
+                  )}
+                  {bug.environment.device && (
+                    <Text style={styles.cardContent}>
+                      <Text style={styles.environmentLabel}>Device: </Text>
+                      {bug.environment.device}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
           </View>
-        )}
+        </View>
 
         {/* Technical Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Technical Details</Text>
-          <View style={styles.techDetails}>
+        <View style={styles.enhancedSection}>
+          <View style={styles.sectionHeaderWithIcon}>
+            <Icon name="settings" size={20} color={Colors.primary.main} />
+            <Text style={styles.enhancedSectionTitle}>Technical Details</Text>
+          </View>
+          <View style={styles.techDetailsCard}>
             <View style={styles.techRow}>
               <Text style={styles.techLabel}>Status:</Text>
               <View style={[styles.statusBadge, getStatusColor(bug.status)]}>
@@ -986,10 +1052,32 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
                 <Text style={styles.techValue}>{bug.project.name}</Text>
               </View>
             )}
+            {bug.reportedBy && (
+              <View style={styles.techRow}>
+                <Text style={styles.techLabel}>Reported By:</Text>
+                <TouchableOpacity onPress={() => handleUserPress(bug.reportedBy)}>
+                  <Text style={[styles.techValue, styles.userLink]}>{bug.reportedBy.name || bug.reportedBy.username || 'Unknown User'}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {bug.repositoryUrl && (
+              <View style={styles.techRow}>
+                <Text style={styles.techLabel}>Repository:</Text>
+                <TouchableOpacity onPress={() => openUrl(bug.repositoryUrl)}>
+                  <Text style={[styles.techValue, styles.linkText]} numberOfLines={1}>{bug.repositoryUrl}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <View style={styles.techRow}>
               <Text style={styles.techLabel}>Bug ID:</Text>
               <Text style={styles.techValue}>#{bug.bugId}</Text>
             </View>
+            {bug.bountyPoints && (
+              <View style={styles.techRow}>
+                <Text style={styles.techLabel}>Bounty Points:</Text>
+                <Text style={[styles.techValue, {color: Colors.accent.yellow, fontWeight: 'bold'}]}>{bug.bountyPoints} points</Text>
+              </View>
+            )}
             <View style={styles.techRow}>
               <Text style={styles.techLabel}>Created:</Text>
               <Text style={styles.techValue}>{new Date(bug.createdAt).toLocaleDateString()}</Text>
@@ -1012,36 +1100,58 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
                 </View>
               </View>
             )}
+            {/* Show tags if available */}
+            {bug.tags && bug.tags.length > 0 && (
+              <View style={styles.techRow}>
+                <Text style={styles.techLabel}>Tags:</Text>
+                <View style={styles.tagsContainer}>
+                  {bug.tags.map((tag, index) => (
+                    <View key={index} style={styles.tagChip}>
+                      <Text style={styles.tagText}>{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
         </View>
 
         {/* Repository Link */}
         {bug.repositoryUrl && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Repository</Text>
+          <View style={styles.enhancedSection}>
+            <View style={styles.sectionHeaderWithIcon}>
+              <Icon name="code" size={20} color={Colors.primary.main} />
+              <Text style={styles.enhancedSectionTitle}>Repository</Text>
+            </View>
             <TouchableOpacity 
-              style={styles.repoLink}
+              style={styles.repoCard}
               onPress={() => openUrl(bug.repositoryUrl)}
             >
-              <Icon name="code" size={20} color="#4ECDC4" />
+              <Icon name="link" size={20} color={Colors.accent.blue} />
               <Text style={styles.repoLinkText}>View Repository</Text>
-              <Icon name="open-in-new" size={16} color="#4ECDC4" />
+              <Icon name="open-in-new" size={16} color={Colors.accent.blue} />
             </TouchableOpacity>
           </View>
         )}
 
         {/* Attachments */}
         {bug.attachments && bug.attachments.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Attachments</Text>
-            <View style={styles.attachmentsContainer}>
+          <View style={styles.enhancedSection}>
+            <View style={styles.sectionHeaderWithIcon}>
+              <Icon name="attach-file" size={20} color={Colors.primary.main} />
+              <Text style={styles.enhancedSectionTitle}>Attachments ({bug.attachments.length})</Text>
+            </View>
+            <View style={styles.attachmentGrid}>
               {bug.attachments.map((attachment, index) => (
-                <View key={index} style={styles.attachmentItem}>
-                  <Icon name="attach-file" size={20} color="#ff9500" />
-                  <Text style={styles.attachmentName}>{attachment.name}</Text>
-                  <Text style={styles.attachmentSize}>
-                    {attachment.size ? `${(attachment.size / 1024).toFixed(1)} KB` : ''}
-                  </Text>
+                <View key={index} style={styles.attachmentCard}>
+                  <Icon name="insert-drive-file" size={24} color="#4ECDC4" />
+                  <View style={styles.attachmentInfo}>
+                    <Text style={styles.attachmentName}>{attachment.name}</Text>
+                    <Text style={styles.attachmentSize}>
+                      {attachment.size ? `${(attachment.size / 1024).toFixed(1)} KB` : 'Unknown size'}
+                    </Text>
+                  </View>
+                  <Icon name="download" size={20} color="#ff9500" />
                 </View>
               ))}
             </View>
@@ -1049,14 +1159,16 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
         )}
 
         {/* Comments Section */}
-        <View style={styles.commentsSection}>
-          <View style={styles.commentsHeader}>
-            <Text style={styles.sectionTitle}>Comments ({bug.comments?.length || 0})</Text>
+        <View style={styles.enhancedSection}>
+          <View style={styles.sectionHeaderWithIcon}>
+            <Icon name="comment" size={20} color="#ff9500" />
+            <Text style={styles.enhancedSectionTitle}>Comments ({bug.comments?.length || 0})</Text>
+            <View style={styles.spacer} />
             <TouchableOpacity 
               style={styles.addCommentButton}
               onPress={() => setShowCommentModal(true)}
             >
-              <Icon name="add-comment" size={20} color="#FFF" />
+              <Icon name="add" size={16} color="#000" />
               <Text style={styles.addCommentText}>Add Comment</Text>
             </TouchableOpacity>
           </View>
@@ -1373,7 +1485,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background.primary,
   },
   loadingContainer: {
     flex: 1,
@@ -1382,7 +1494,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#CCCCCC',
+    color: Colors.text.secondary,
   },
   errorContainer: {
     flex: 1,
@@ -1392,17 +1504,17 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    color: '#E74C3C',
+    color: Colors.status.danger,
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   retryButtonText: {
-    color: '#FFF',
+    color: Colors.text.primary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1412,9 +1524,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.backgroundCard,
     borderBottomWidth: 1,
-    borderBottomColor: '#444444',
+    borderBottomColor: Colors.border.light,
   },
   backButton: {
     padding: 8,
@@ -1422,17 +1534,17 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: Colors.textPrimary,
   },
   refreshButton: {
     padding: 8,
   },
   scrollView: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background.primary,
   },
   bugHeader: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.backgroundCard,
     padding: 16,
     marginBottom: 8,
   },
@@ -1447,7 +1559,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   statusText: {
-    color: '#FFF',
+    color: Colors.textPrimary,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -1457,19 +1569,19 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   priorityText: {
-    color: '#FFF',
+    color: Colors.textPrimary,
     fontSize: 12,
     fontWeight: '600',
   },
   bugTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Colors.textPrimary,
     marginBottom: 4,
   },
   bugId: {
     fontSize: 14,
-    color: '#CCCCCC',
+    color: Colors.textSecondary,
     marginBottom: 12,
   },
   metaInfo: {
@@ -1477,11 +1589,11 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 14,
-    color: '#CCCCCC',
+    color: Colors.textSecondary,
     marginBottom: 4,
   },
   pointsSection: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.backgroundCard,
     padding: 16,
     marginBottom: 8,
   },
@@ -1645,17 +1757,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   section: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.backgroundCard,
     padding: 16,
     marginBottom: 8,
   },
   description: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: Colors.textPrimary,
     lineHeight: 24,
   },
   commentsSection: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.backgroundCard,
     padding: 16,
     marginBottom: 8,
   },
@@ -1668,13 +1780,15 @@ const styles = StyleSheet.create({
   addCommentButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3498DB',
+    backgroundColor: '#ff9500',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ff9500',
   },
   addCommentText: {
-    color: '#FFF',
+    color: '#000',
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 4,
@@ -1985,20 +2099,28 @@ const styles = StyleSheet.create({
   },
   techValue: {
     fontSize: 14,
-    color: '#CCCCCC',
+    color: Colors.text.secondary,
     flex: 1,
+  },
+  userLink: {
+    color: Colors.primary.main,
+    textDecorationLine: 'underline',
+  },
+  linkText: {
+    color: Colors.accent.blue,
+    textDecorationLine: 'underline',
   },
   repoLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.background.card,
     padding: 12,
     borderRadius: 8,
     gap: 8,
   },
   repoLinkText: {
     fontSize: 14,
-    color: '#4ECDC4',
+    color: Colors.accent.blue,
     fontWeight: '600',
     flex: 1,
   },
@@ -2008,19 +2130,19 @@ const styles = StyleSheet.create({
   attachmentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.background.card,
     padding: 12,
     borderRadius: 8,
     gap: 8,
   },
   attachmentName: {
     fontSize: 14,
-    color: '#CCCCCC',
+    color: Colors.text.secondary,
     flex: 1,
   },
   attachmentSize: {
     fontSize: 12,
-    color: '#888888',
+    color: Colors.text.muted,
   },
   tagsContainer: {
     flexDirection: 'row',
@@ -2029,21 +2151,21 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tagChip: {
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
   tagText: {
     fontSize: 12,
-    color: '#000',
+    color: Colors.primary.text,
     fontWeight: '600',
   },
   // Nested comments styles
   replyComment: {
     borderLeftWidth: 2,
-    borderLeftColor: '#ff9500',
-    backgroundColor: '#1a1a1a',
+    borderLeftColor: Colors.primary.main,
+    backgroundColor: Colors.background.secondary,
   },
   commentActions: {
     flexDirection: 'row',
@@ -2058,7 +2180,7 @@ const styles = StyleSheet.create({
   },
   replyButtonText: {
     fontSize: 12,
-    color: '#ff9500',
+    color: Colors.primary.main,
     fontWeight: '500',
   },
   expandButton: {
@@ -2068,18 +2190,18 @@ const styles = StyleSheet.create({
   },
   expandButtonText: {
     fontSize: 12,
-    color: '#888888',
+    color: Colors.text.muted,
   },
   repliesContainer: {
     marginTop: 8,
   },
   replyInputContainer: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
     borderLeftWidth: 3,
-    borderLeftColor: '#ff9500',
+    borderLeftColor: Colors.primary.main,
   },
   replyHeader: {
     flexDirection: 'row',
@@ -2089,19 +2211,19 @@ const styles = StyleSheet.create({
   },
   replyingToText: {
     fontSize: 14,
-    color: '#ff9500',
+    color: Colors.primary.main,
     fontWeight: '600',
   },
   replyInput: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.background.card,
     borderRadius: 8,
     padding: 12,
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 14,
     minHeight: 80,
     textAlignVertical: 'top',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: Colors.border.light,
   },
   replyActions: {
     flexDirection: 'row',
@@ -2113,10 +2235,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 6,
-    backgroundColor: '#333333',
+    backgroundColor: Colors.border.light,
   },
   cancelReplyText: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 14,
     fontWeight: '500',
   },
@@ -2124,12 +2246,106 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 6,
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
   },
   submitReplyText: {
-    color: '#000000',
+    color: Colors.primary.text,
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Enhanced UI Styles
+  enhancedSection: {
+    marginBottom: 24,
+  },
+  sectionHeaderWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border.light,
+  },
+  enhancedSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text.primary,
+    marginLeft: 12,
+  },
+  contentCard: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary.main,
+  },
+  gridContainer: {
+    gap: 12,
+  },
+  detailCard: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text.primary,
+    marginLeft: 8,
+  },
+  cardContent: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    lineHeight: 20,
+  },
+  techDetailsCard: {
+    backgroundColor: Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+  },
+  repoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background.secondary,
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.accent.blue,
+  },
+  attachmentGrid: {
+    gap: 12,
+  },
+  attachmentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background.secondary,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+    gap: 12,
+  },
+  attachmentInfo: {
+    flex: 1,
+  },
+  spacer: {
+    flex: 1,
+  },
+  environmentDetails: {
+    gap: 8,
+  },
+  environmentLabel: {
+    fontWeight: '600',
+    color: Colors.primary.main,
   },
 });
 

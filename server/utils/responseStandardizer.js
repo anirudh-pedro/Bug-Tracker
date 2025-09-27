@@ -102,10 +102,55 @@ const standardizeBugResponse = (bug) => {
     description: bug.description || '',
     status: bug.status || 'open',
     priority: bug.priority || 'medium',
+    severity: bug.severity || 'minor',
+    category: bug.category || 'bug',
     project: standardizeProjectReference(bug.project),
     reportedBy: standardizeUserReference(bug.reportedBy),
     resolvedBy: standardizeUserReference(bug.resolvedBy),
     assignedTo: standardizeUserReference(bug.assignedTo),
+    
+    // Environment details
+    environment: bug.environment ? {
+      os: bug.environment.os || '',
+      browser: bug.environment.browser || '',
+      version: bug.environment.version || '',
+      device: bug.environment.device || ''
+    } : null,
+    
+    // Steps and behavior
+    stepsToReproduce: bug.stepsToReproduce ? 
+      bug.stepsToReproduce
+        .sort((a, b) => a.order - b.order)
+        .map(step => step.step)
+        .join('\n') : null,
+    expectedBehavior: bug.expectedResult || null,
+    actualBehavior: bug.actualResult || null,
+    
+    // Repository and attachments  
+    repositoryUrl: bug.githubRepo?.url || null,
+    attachments: bug.attachments ? bug.attachments.map(attachment => ({
+      filename: attachment.filename || '',
+      url: attachment.url || '',
+      type: attachment.type || '',
+      size: Number(attachment.size || 0),
+      uploadedAt: standardizeDate(attachment.uploadedAt)
+    })) : [],
+    
+    // Tags and labels
+    tags: bug.tags || [],
+    labels: bug.labels ? bug.labels.map(label => ({
+      name: label.name || '',
+      color: label.color || ''
+    })) : [],
+    
+    // GitHub integration
+    githubRepo: bug.githubRepo ? {
+      url: bug.githubRepo.url || '',
+      owner: bug.githubRepo.owner || '',
+      name: bug.githubRepo.name || '',
+      isPublic: Boolean(bug.githubRepo.isPublic)
+    } : null,
+    
     bountyPoints: Number(bug.bountyPoints || 0),
     pointsAwarded: bug.pointsAwarded ? bug.pointsAwarded.map(award => ({
       userId: award.userId ? award.userId.toString() : null,
