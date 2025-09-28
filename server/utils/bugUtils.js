@@ -79,7 +79,7 @@ const findBugByIdOrBugIdWithPopulation = async (identifier, populateFields = [])
 
 /**
  * Validate bug identifier format
- * @param {string} identifier - Bug identifier
+ * @param {string|ObjectId} identifier - Bug identifier
  * @returns {Object} Validation result
  */
 const validateBugIdentifier = (identifier) => {
@@ -87,11 +87,17 @@ const validateBugIdentifier = (identifier) => {
     return { valid: false, error: 'Bug identifier is required' };
   }
 
+  // Convert to string if it's not already
+  const identifierStr = typeof identifier === 'string' ? identifier : identifier.toString();
+  
+  // Trim whitespace
+  const trimmedIdentifier = identifierStr.trim();
+
   // Check if it's a valid MongoDB ObjectId format
-  const isMongoId = /^[0-9a-fA-F]{24}$/.test(identifier);
+  const isMongoId = /^[0-9a-fA-F]{24}$/.test(trimmedIdentifier);
   
   // Check if it's a custom bugId format (PROJECT-NUMBER, e.g., "PROJ-001" or "BUG-123456")
-  const isBugId = /^[A-Z]+[A-Z0-9]*-[0-9]+$/.test(identifier);
+  const isBugId = /^[A-Z]+[A-Z0-9]*-[0-9]+$/.test(trimmedIdentifier);
   
   if (!isMongoId && !isBugId) {
     return { valid: false, error: 'Invalid bug identifier format' };
@@ -99,7 +105,7 @@ const validateBugIdentifier = (identifier) => {
 
   return { 
     valid: true, 
-    identifier: identifier.trim(),
+    identifier: trimmedIdentifier,
     type: isMongoId ? 'mongodb' : 'bugId'
   };
 };

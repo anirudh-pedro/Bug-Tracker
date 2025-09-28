@@ -340,6 +340,12 @@ const DashboardScreen = () => {
               colors={['#ff9500']}
             />
           }
+          // Performance optimizations
+          initialNumToRender={8}
+          maxToRenderPerBatch={4}
+          windowSize={8}
+          removeClippedSubviews={true}
+          updateCellsBatchingPeriod={50}
         />
 
         {/* Filter Modal */}

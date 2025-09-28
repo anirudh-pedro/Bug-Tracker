@@ -14,8 +14,24 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { apiRequest } from '../utils/networkUtils';
 import { useFocusEffect } from '@react-navigation/native';
+
+import { apiRequest } from '../utils/networkUtils';
+import Colors from '../theme/colors';
+
+const PROJECT_STATUS_COLORS = {
+  active: Colors.status.success,
+  completed: Colors.status.info,
+  inactive: Colors.status.warning,
+  archived: Colors.status.default,
+  default: Colors.status.default,
+};
+
+const PROJECT_STAT_ICON_COLORS = {
+  bugs: Colors.status.danger,
+  members: Colors.status.success,
+  schedule: Colors.text.tertiary,
+};
 
 const ProjectsScreen = ({navigation}) => {
   const [searchText, setSearchText] = useState('');
@@ -115,13 +131,8 @@ const ProjectsScreen = ({navigation}) => {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'active': return '#10b981';
-      case 'completed': return '#667eea';
-      case 'inactive': return '#ff6b6b';
-      case 'archived': return '#888888';
-      default: return '#888888';
-    }
+    const key = status?.toLowerCase();
+    return PROJECT_STATUS_COLORS[key] ?? PROJECT_STATUS_COLORS.default;
   };
 
   const formatDate = (dateString) => {
@@ -234,17 +245,17 @@ const ProjectsScreen = ({navigation}) => {
           {/* Search Bar */}
           <View style={styles.searchContainer}>
             <View style={styles.searchBar}>
-              <Icon name="search" size={20} color="#666666" />
+              <Icon name="search" size={20} color={Colors.text.muted} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search projects..."
-                placeholderTextColor="#666666"
+                placeholderTextColor={Colors.text.muted}
                 value={searchText}
                 onChangeText={setSearchText}
               />
               {searchText ? (
                 <TouchableOpacity onPress={() => setSearchText('')}>
-                  <Icon name="clear" size={20} color="#666666" />
+                  <Icon name="clear" size={20} color={Colors.text.muted} />
                 </TouchableOpacity>
               ) : null}
             </View>
@@ -252,7 +263,7 @@ const ProjectsScreen = ({navigation}) => {
 
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#ff9500" />
+              <ActivityIndicator size="large" color={Colors.primary.main} />
               <Text style={styles.loadingText}>Loading projects...</Text>
             </View>
           ) : (
@@ -260,19 +271,19 @@ const ProjectsScreen = ({navigation}) => {
               {/* Quick Stats */}
               <View style={styles.statsContainer}>
                 <View style={[styles.statCard, styles.totalProjectsCard]}>
-                  <Icon name="folder" size={24} color="#ff9500" />
+                  <Icon name="folder" size={24} color={Colors.primary.main} />
                   <Text style={styles.statNumber}>{projects.length}</Text>
                   <Text style={styles.statLabel}>Total Projects</Text>
                 </View>
                 <View style={[styles.statCard, styles.activeProjectsCard]}>
-                  <Icon name="play-arrow" size={24} color="#ff9500" />
+                  <Icon name="play-arrow" size={24} color={Colors.primary.main} />
                   <Text style={styles.statNumber}>
                     {projects.filter(p => p.status === 'active').length}
                   </Text>
                   <Text style={styles.statLabel}>Active</Text>
                 </View>
                 <View style={[styles.statCard, styles.totalBugsCard]}>
-                  <Icon name="bug-report" size={24} color="#ff9500" />
+                  <Icon name="bug-report" size={24} color={Colors.primary.main} />
                   <Text style={styles.statNumber}>
                     {projects.reduce((sum, p) => sum + (p.stats?.totalBugs || 0), 0)}
                   </Text>
@@ -290,14 +301,14 @@ const ProjectsScreen = ({navigation}) => {
                       onProjectCreated: loadProjects 
                     })}
                   >
-                    <Icon name="add" size={20} color="#ffffff" />
+                    <Icon name="add" size={20} color={Colors.iconPrimary} />
                     <Text style={styles.addButtonText}>New</Text>
                   </TouchableOpacity>
                 </View>
 
                 {filteredProjects.length === 0 ? (
                   <View style={styles.emptyContainer}>
-                    <Icon name="folder-open" size={80} color="#666666" />
+                    <Icon name="folder-open" size={80} color={Colors.text.muted} />
                     <Text style={styles.emptyTitle}>
                       {projects.length === 0 ? 'No Projects Yet' : 'No Matching Projects'}
                     </Text>
@@ -314,7 +325,7 @@ const ProjectsScreen = ({navigation}) => {
                           onProjectCreated: loadProjects 
                         })}
                       >
-                        <Icon name="add" size={20} color="#ffffff" />
+                        <Icon name="add" size={20} color={Colors.iconPrimary} />
                         <Text style={styles.createFirstButtonText}>Create First Project</Text>
                       </TouchableOpacity>
                     )}
@@ -351,19 +362,19 @@ const ProjectsScreen = ({navigation}) => {
                       {/* Project Stats */}
                       <View style={styles.projectStats}>
                         <View style={styles.projectStat}>
-                          <Icon name="bug-report" size={16} color="#ff6b6b" />
+                          <Icon name="bug-report" size={16} color={PROJECT_STAT_ICON_COLORS.bugs} />
                           <Text style={styles.projectStatText}>
                             {project.stats?.totalBugs || 0} bugs
                           </Text>
                         </View>
                         <View style={styles.projectStat}>
-                          <Icon name="people" size={16} color="#10b981" />
+                          <Icon name="people" size={16} color={PROJECT_STAT_ICON_COLORS.members} />
                           <Text style={styles.projectStatText}>
                             {project.stats?.memberCount || 0} members
                           </Text>
                         </View>
                         <View style={styles.projectStat}>
-                          <Icon name="schedule" size={16} color="#888888" />
+                          <Icon name="schedule" size={16} color={PROJECT_STAT_ICON_COLORS.schedule} />
                           <Text style={styles.projectStatText}>
                             {formatDate(project.updatedAt || project.createdAt)}
                           </Text>
@@ -377,13 +388,13 @@ const ProjectsScreen = ({navigation}) => {
                           style={styles.editButton}
                           onPress={() => handleEditProject(project)}
                         >
-                          <Icon name="edit" size={18} color="#667eea" />
+                          <Icon name="edit" size={18} color={Colors.status.info} />
                         </TouchableOpacity>
                         <TouchableOpacity 
                           style={styles.deleteButton}
                           onPress={() => handleDeleteProject(project)}
                         >
-                          <Icon name="delete" size={18} color="#ff6b6b" />
+                          <Icon name="delete" size={18} color={Colors.status.danger} />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -470,11 +481,11 @@ const ProjectsScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background.primary,
   },
   safeArea: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background.primary,
   },
   scrollView: {
     flex: 1,
@@ -488,13 +499,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 8,
     letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666666',
+    color: Colors.text.muted,
     fontWeight: '500',
   },
   searchContainer: {
@@ -503,17 +514,17 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111111',
+    backgroundColor: Colors.backgroundSecondary,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: Colors.border.light,
     gap: 12,
   },
   searchInput: {
     flex: 1,
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 14,
     fontWeight: '400',
   },
@@ -525,39 +536,39 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#111111',
+    backgroundColor: Colors.backgroundSecondary,
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     borderWidth: 2,
     gap: 8,
     // Shadow for depth
-    shadowColor: '#000',
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
   },
   totalProjectsCard: {
-    backgroundColor: '#1b1f2d',
-    borderColor: '#667eea',
+    backgroundColor: Colors.background.card,
+    borderColor: Colors.accent.blue,
   },
   activeProjectsCard: {
-    backgroundColor: '#0d2818',
-    borderColor: '#10b981',
+    backgroundColor: Colors.background.card,
+    borderColor: Colors.status.resolved,
   },
   totalBugsCard: {
-    backgroundColor: '#2d1b1b',
-    borderColor: '#ff6b6b',
+    backgroundColor: Colors.background.card,
+    borderColor: Colors.status.danger,
   },
   statNumber: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   statLabel: {
     fontSize: 12,
-    color: '#cccccc',
+    color: Colors.text.secondary,
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -574,30 +585,30 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
     letterSpacing: -0.2,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     gap: 6,
   },
   addButtonText: {
-    color: '#ffffff',
+    color: Colors.primary.text,
     fontSize: 14,
     fontWeight: '600',
   },
   projectCard: {
-    backgroundColor: '#111111',
+    backgroundColor: Colors.backgroundSecondary,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: Colors.border.light,
   },
   projectHeader: {
     marginBottom: 16,

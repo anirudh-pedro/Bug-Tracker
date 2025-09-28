@@ -1,5 +1,37 @@
 import { AUTH_CONFIG } from '../config/authConfig';
 
+// Simple cache for API responses
+const API_CACHE = new Map();
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
+// Request deduplication - prevent multiple identical simultaneous requests
+const PENDING_REQUESTS = new Map();
+
+const getCacheKey = (endpoint, options) => {
+  return `${endpoint}_${JSON.stringify(options || {})}`;
+};
+
+const getCachedResponse = (cacheKey) => {
+  const cached = API_CACHE.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    console.log('📦 Using cached response for:', cacheKey);
+    return cached.data;
+  }
+  return null;
+};
+
+const setCachedResponse = (cacheKey, data) => {
+  API_CACHE.set(cacheKey, {
+    data,
+    timestamp: Date.now()
+  });
+  // Clean old entries periodically
+  if (API_CACHE.size > 50) {
+    const firstKey = API_CACHE.keys().next().value;
+    API_CACHE.delete(firstKey);
+  }
+};
+
 // Test server connectivity with multiple URLs
 export const testServerConnectivity = async () => {
   const urlsToTest = [
@@ -17,7 +49,7 @@ export const testServerConnectivity = async () => {
       const timeoutId = setTimeout(() => {
         console.log(`⏰ Connectivity test timeout for ${url}`);
         controller.abort();
-      }, 5000); // Reduced to 5 second timeout for connectivity test
+      }, 3000); // Quick connectivity test timeout
       
       const response = await fetch(`${url}/api/health`, {
         method: 'GET',
@@ -50,6 +82,41 @@ export const testServerConnectivity = async () => {
 
 // Make API request with automatic fallback URLs
 export const apiRequest = async (endpoint, options = {}) => {
+  // Check cache for GET requests (non-auth endpoints)
+  const isGetRequest = !options.method || options.method === 'GET';
+  const isAuthEndpoint = endpoint.includes('/auth/');
+  const cacheKey = getCacheKey(endpoint, options);
+  
+  if (isGetRequest && !isAuthEndpoint) {
+    const cachedResponse = getCachedResponse(cacheKey);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    
+    // Check if the same request is already in progress
+    if (PENDING_REQUESTS.has(cacheKey)) {
+      console.log('⏳ Request already in progress, waiting for result:', cacheKey);
+      return await PENDING_REQUESTS.get(cacheKey);
+    }
+  }
+
+  // Create promise for deduplication
+  const requestPromise = performRequest(endpoint, options, isGetRequest, isAuthEndpoint, cacheKey);
+  
+  if (isGetRequest && !isAuthEndpoint) {
+    PENDING_REQUESTS.set(cacheKey, requestPromise);
+    try {
+      const result = await requestPromise;
+      return result;
+    } finally {
+      PENDING_REQUESTS.delete(cacheKey);
+    }
+  }
+  
+  return await requestPromise;
+};
+
+const performRequest = async (endpoint, options, isGetRequest, isAuthEndpoint, cacheKey) => {
   const urlsToTry = [
     AUTH_CONFIG.BACKEND_URL,
     ...AUTH_CONFIG.FALLBACK_URLS
@@ -57,8 +124,8 @@ export const apiRequest = async (endpoint, options = {}) => {
 
   let lastError = null;
   
-  // Use a longer timeout for auth endpoints (30 seconds)
-  const timeout = endpoint.includes('/auth/') ? 30000 : 15000;
+  // Use reasonable timeouts for better user experience
+  const timeout = endpoint.includes('/auth/') ? 10000 : 5000;
 
   // Get authentication token from AsyncStorage
   const AsyncStorage = require('@react-native-async-storage/async-storage').default;
@@ -117,6 +184,11 @@ export const apiRequest = async (endpoint, options = {}) => {
               message: 'Authentication failed. Please log in again.',
               authError: true 
             };
+          }
+          
+          // Cache successful GET responses
+          if (isGetRequest && !isAuthEndpoint && response.ok) {
+            setCachedResponse(cacheKey, data);
           }
           
           return data;

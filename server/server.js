@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const { responseStandardizerMiddleware } = require('./utils/responseStandardizer');
@@ -10,8 +11,26 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 
+// Enable gzip compression for better performance
+app.use(compression({
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  },
+  threshold: 1024, // Only compress responses larger than 1KB
+  level: 6 // Compression level (1-9, 6 is good balance)
+}));
+
 // Security middleware
 app.use(helmet());
+
+// Compression middleware for better performance
+app.use(compression({
+  level: 6, // Balance between compression speed and ratio
+  threshold: 1024, // Only compress responses > 1KB
+}));
 
 // Rate limiting
 const limiter = rateLimit({

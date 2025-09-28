@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { apiRequest } from '../utils/enhancedNetworkUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, getStatusColor, getPriorityColor } from '../theme/colors';
+import { BugListSkeleton } from '../components/SkeletonLoader';
 
 const {width: screenWidth} = Dimensions.get('window');
 
@@ -74,12 +75,12 @@ const EnhancedBugsScreen = ({navigation, route}) => {
     loadCurrentUser();
     loadBugs();
     
-    // Set up auto-refresh every 30 seconds
+    // Set up auto-refresh every 2 minutes (less aggressive)
     const interval = setInterval(() => {
       if (autoRefresh) {
         loadBugs(true); // Silent refresh
       }
-    }, 30000);
+    }, 120000); // 2 minutes instead of 30 seconds
 
     return () => clearInterval(interval);
   }, [autoRefresh]);
@@ -120,7 +121,7 @@ const EnhancedBugsScreen = ({navigation, route}) => {
     try {
       if (!silent) setLoading(true);
       
-      const response = await apiRequest('/api/bugs?limit=50&sortBy=createdAt&sortOrder=desc');
+      const response = await apiRequest('/api/bugs?limit=20&sortBy=createdAt&sortOrder=desc');
       
       if (response.success) {
         console.log('📋 Bugs API response:', response.data);
@@ -567,10 +568,10 @@ const EnhancedBugsScreen = ({navigation, route}) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.accent.blue} />
-          <Text style={styles.loadingText}>Loading bugs...</Text>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Bug Reports</Text>
         </View>
+        <BugListSkeleton count={8} />
       </SafeAreaView>
     );
   }
@@ -748,6 +749,17 @@ const EnhancedBugsScreen = ({navigation, route}) => {
           </View>
         }
         showsVerticalScrollIndicator={false}
+        // Performance optimizations
+        initialNumToRender={10}
+        maxToRenderPerBatch={5}
+        windowSize={10}
+        removeClippedSubviews={true}
+        getItemLayout={(data, index) => ({
+          length: 120, // estimated item height
+          offset: 120 * index,
+          index,
+        })}
+        updateCellsBatchingPeriod={50}
       />
 
       {/* Create Bug FAB */}

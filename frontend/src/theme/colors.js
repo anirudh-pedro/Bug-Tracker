@@ -58,6 +58,15 @@ export const Colors = {
     info: '#3498DB'           // Blue for information
   },
 
+  // Project Status Colors (reusing status/accent palette)
+  projectStatus: {
+    active: '#27AE60',        // Green for active projects
+    completed: '#3498DB',     // Blue for completed projects
+    inactive: '#E74C3C',      // Red for inactive projects
+    archived: '#666666',      // Muted gray for archived projects
+    default: '#666666'        // Fallback gray
+  },
+
   // Priority Colors
   priority: {
     critical: '#8E44AD',      // Purple for critical
@@ -125,6 +134,11 @@ export const getPriorityColor = (priority) => {
     case 'low': return Colors.priority.low;
     default: return Colors.priority.default;
   }
+};
+
+export const getProjectStatusColor = (status) => {
+  const statusKey = status?.toLowerCase();
+  return Colors.projectStatus[statusKey] || Colors.projectStatus.default;
 };
 
 export const getUserRoleColor = (role) => {

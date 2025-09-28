@@ -71,7 +71,7 @@ export const testServerConnectivity = async () => {
         const timeoutId = setTimeout(() => {
           console.log(`⏰ Connectivity test timeout for ${url}${endpoint}`);
           controller.abort();
-        }, 5000); // Shorter timeout for connectivity test
+        }, 3000); // Quick connectivity test
         
         const response = await fetch(`${url}${endpoint}`, {
           method: 'GET',
@@ -167,10 +167,10 @@ export const apiRequest = async (endpoint, options = {}) => {
 
 // Get appropriate timeout for different endpoint types
 const getTimeoutForEndpoint = (endpoint) => {
-  if (endpoint.includes('/auth/')) return 30000; // 30s for auth
-  if (endpoint.includes('/upload')) return 60000; // 60s for uploads
-  if (endpoint.includes('/dashboard')) return 20000; // 20s for dashboard
-  return 15000; // 15s default
+  if (endpoint.includes('/auth/')) return 8000; // 8s for auth
+  if (endpoint.includes('/upload')) return 20000; // 20s for uploads
+  if (endpoint.includes('/dashboard')) return 6000; // 6s for dashboard
+  return 4000; // 4s default - even faster fallback
 };
 
 // Get authentication token with error handling

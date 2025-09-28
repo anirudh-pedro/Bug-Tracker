@@ -39,7 +39,7 @@ const getAllBugs = async (req, res) => {
 
     const {
       page = 1,
-      limit = 10,
+      limit = 20, // Increased default to match frontend optimization
       status,
       priority,
       search,

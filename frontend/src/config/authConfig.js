@@ -5,9 +5,9 @@ export const AUTH_CONFIG = {
     ? 'http://172.16.8.229:5000' // Ethernet IP
     : 'https://your-production-api.com',
   
-  // Fallback URLs for connectivity issues
+  // Fallback URLs for connectivity issues - reordered based on performance
   FALLBACK_URLS: __DEV__ 
-    ? ['http://172.16.8.229:5000', 'http://10.178.105.115:5000', 'http://localhost:5000', 'http://172.31.80.1:5000', 'http://10.0.2.2:5000']
+    ? ['http://10.178.105.115:5000', 'http://172.16.8.229:5000', 'http://localhost:5000', 'http://172.31.80.1:5000', 'http://10.0.2.2:5000']
     : [],
   
   // Google Sign-In
