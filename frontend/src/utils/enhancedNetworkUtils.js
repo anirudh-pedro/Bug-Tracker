@@ -1,7 +1,14 @@
-import { AUTH_CONFIG } from '../config/authConfig';
+import NETWORK_CONFIG, { 
+  getAllUrls, 
+  getTimeoutForEndpoint as getTimeout,
+  calculateRetryDelay,
+  getNetworkQuality as getQualityFromLatency
+} from '../config/networkConfig';
+import { requiresAuth } from '../config/apiConfig';
 
 /**
  * Enhanced network utility with improved error handling and retry logic
+ * Optimized for mobile networks
  */
 
 // Network error types for better categorization
@@ -48,19 +55,12 @@ export const categorizeNetworkError = (error) => {
 
 // Enhanced server connectivity test with health check fallbacks
 export const testServerConnectivity = async () => {
-  const urlsToTest = [
-    AUTH_CONFIG.BACKEND_URL,
-    ...AUTH_CONFIG.FALLBACK_URLS
-  ];
+  const urlsToTest = getAllUrls();
 
   console.log('🔍 Testing server connectivity...');
   
-  // Health check endpoints in order of preference
-  const healthEndpoints = [
-    '/api/health',
-    '/api/test/health',
-    '/api/users/debug-public'
-  ];
+  // Health check endpoints from network config
+  const healthEndpoints = NETWORK_CONFIG.HEALTH_ENDPOINTS;
   
   for (const url of urlsToTest) {
     console.log(`🔗 Testing: ${url}`);
@@ -71,7 +71,7 @@ export const testServerConnectivity = async () => {
         const timeoutId = setTimeout(() => {
           console.log(`⏰ Connectivity test timeout for ${url}${endpoint}`);
           controller.abort();
-        }, 3000); // Quick connectivity test
+        }, NETWORK_CONFIG.TIMEOUTS.HEALTH_CHECK);
         
         const response = await fetch(`${url}${endpoint}`, {
           method: 'GET',
@@ -101,17 +101,13 @@ export const testServerConnectivity = async () => {
 
 // Enhanced API request with exponential backoff and circuit breaker pattern
 export const apiRequest = async (endpoint, options = {}) => {
-  const urlsToTry = [
-    AUTH_CONFIG.BACKEND_URL,
-    ...AUTH_CONFIG.FALLBACK_URLS
-  ];
+  const urlsToTry = getAllUrls();
 
-  const maxRetries = options.maxRetries || AUTH_CONFIG.MAX_RETRIES || 3;
-  const baseDelay = 1000; // 1 second base delay
+  const maxRetries = options.maxRetries || NETWORK_CONFIG.RETRY.MAX_RETRIES;
   let lastError = null;
   
   // Dynamic timeout based on endpoint type
-  const timeout = getTimeoutForEndpoint(endpoint);
+  const timeout = getTimeout(endpoint);
 
   // Get authentication token
   const authToken = await getAuthToken();
@@ -150,7 +146,7 @@ export const apiRequest = async (endpoint, options = {}) => {
     
     // Exponential backoff between retry attempts
     if (attempt < maxRetries - 1) {
-      const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+      const delay = calculateRetryDelay(attempt);
       console.log(`⏳ Waiting ${Math.round(delay)}ms before retry...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -163,14 +159,6 @@ export const apiRequest = async (endpoint, options = {}) => {
   const userMessage = getUserFriendlyErrorMessage(errorType);
   
   throw new Error(userMessage);
-};
-
-// Get appropriate timeout for different endpoint types
-const getTimeoutForEndpoint = (endpoint) => {
-  if (endpoint.includes('/auth/')) return 8000; // 8s for auth
-  if (endpoint.includes('/upload')) return 20000; // 20s for uploads
-  if (endpoint.includes('/dashboard')) return 6000; // 6s for dashboard
-  return 4000; // 4s default - even faster fallback
 };
 
 // Get authentication token with error handling
@@ -230,17 +218,7 @@ const makeRequestWithTimeout = async (baseUrl, endpoint, options, authToken, tim
 
 // Determine if auth token should be included for endpoint
 const shouldIncludeAuthToken = (endpoint) => {
-  const publicEndpoints = [
-    '/auth/login',
-    '/auth/signup', 
-    '/auth/google',
-    '/health',
-    '/test/health'
-  ];
-  
-  return !publicEndpoints.some(publicEndpoint => 
-    endpoint.includes(publicEndpoint)
-  );
+  return requiresAuth(endpoint);
 };
 
 // Handle response with proper error categorization
@@ -320,9 +298,7 @@ export const getNetworkQuality = async () => {
     const endTime = Date.now();
     const latency = endTime - startTime;
     
-    let quality = 'good';
-    if (latency > 5000) quality = 'poor';
-    else if (latency > 2000) quality = 'fair';
+    const quality = getQualityFromLatency(latency);
     
     return {
       isConnected: !!connectivity,

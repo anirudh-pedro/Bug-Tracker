@@ -40,16 +40,28 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// CORS configuration - Allow access from React Native and web
-app.use(cors({
-  origin: [
-    'http://localhost:3000', 
-    'http://10.0.2.2:3000',
-    'http://192.168.212.115:3000',
-    '*' // Allow all origins for React Native development
-  ],
-  credentials: true
-}));
+// CORS configuration - Environment-aware
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? [
+        // Add your production frontend URLs here
+        'https://your-production-frontend.com',
+        'https://www.your-production-frontend.com'
+      ]
+    : [
+        // Development: Allow all origins for React Native
+        // This includes emulators, physical devices, and local development
+        'http://localhost:3000', 
+        'http://10.0.2.2:3000',  // Android emulator
+        'http://192.168.212.115:3000',
+        '*'  // Allow all for development
+      ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));

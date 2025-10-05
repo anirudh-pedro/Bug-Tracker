@@ -1,22 +1,20 @@
+import NETWORK_CONFIG from './networkConfig';
+
 // Auth Configuration
 export const AUTH_CONFIG = {
-  // Backend endpoints - for Ethernet connected device  
-  BACKEND_URL: __DEV__ 
-    ? 'http://172.16.8.229:5000' // Ethernet IP
-    : 'https://your-production-api.com',
+  // Backend endpoints - now imported from centralized network config
+  BACKEND_URL: NETWORK_CONFIG.BACKEND_URL,
   
-  // Fallback URLs for connectivity issues - reordered based on performance
-  FALLBACK_URLS: __DEV__ 
-    ? ['http://10.178.105.115:5000', 'http://172.16.8.229:5000', 'http://localhost:5000', 'http://172.31.80.1:5000', 'http://10.0.2.2:5000']
-    : [],
+  // Fallback URLs - now imported from centralized network config
+  FALLBACK_URLS: NETWORK_CONFIG.FALLBACK_URLS,
   
   // Google Sign-In
   GOOGLE_WEB_CLIENT_ID: '505775401765-43mt53j5jri7f6pqtlq37b99s0ui216d.apps.googleusercontent.com',
   
-  // Timeouts and retries
-  AUTH_TIMEOUT: 30000, // 30 seconds
-  SIGN_OUT_TIMEOUT: 5000, // 5 seconds
-  MAX_RETRIES: 3,
+  // Timeouts and retries - now using network config values
+  AUTH_TIMEOUT: NETWORK_CONFIG.TIMEOUTS.AUTH,
+  SIGN_OUT_TIMEOUT: NETWORK_CONFIG.TIMEOUTS.SIGN_OUT,
+  MAX_RETRIES: NETWORK_CONFIG.RETRY.MAX_RETRIES,
   
   // Storage keys
   STORAGE_KEYS: {

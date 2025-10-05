@@ -1,8 +1,11 @@
-import { AUTH_CONFIG } from '../config/authConfig';
+import NETWORK_CONFIG, { 
+  getAllUrls, 
+  getTimeoutForEndpoint,
+  shouldCacheEndpoint 
+} from '../config/networkConfig';
 
 // Simple cache for API responses
 const API_CACHE = new Map();
-const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
 // Request deduplication - prevent multiple identical simultaneous requests
 const PENDING_REQUESTS = new Map();
@@ -13,7 +16,7 @@ const getCacheKey = (endpoint, options) => {
 
 const getCachedResponse = (cacheKey) => {
   const cached = API_CACHE.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+  if (cached && Date.now() - cached.timestamp < NETWORK_CONFIG.CACHE.DURATION) {
     console.log('📦 Using cached response for:', cacheKey);
     return cached.data;
   }
@@ -26,7 +29,7 @@ const setCachedResponse = (cacheKey, data) => {
     timestamp: Date.now()
   });
   // Clean old entries periodically
-  if (API_CACHE.size > 50) {
+  if (API_CACHE.size > NETWORK_CONFIG.CACHE.MAX_SIZE) {
     const firstKey = API_CACHE.keys().next().value;
     API_CACHE.delete(firstKey);
   }
@@ -34,10 +37,7 @@ const setCachedResponse = (cacheKey, data) => {
 
 // Test server connectivity with multiple URLs
 export const testServerConnectivity = async () => {
-  const urlsToTest = [
-    AUTH_CONFIG.BACKEND_URL,
-    ...AUTH_CONFIG.FALLBACK_URLS
-  ];
+  const urlsToTest = getAllUrls();
 
   console.log('🔍 Testing server connectivity...');
   
@@ -49,7 +49,7 @@ export const testServerConnectivity = async () => {
       const timeoutId = setTimeout(() => {
         console.log(`⏰ Connectivity test timeout for ${url}`);
         controller.abort();
-      }, 3000); // Quick connectivity test timeout
+      }, NETWORK_CONFIG.TIMEOUTS.HEALTH_CHECK);
       
       const response = await fetch(`${url}/api/health`, {
         method: 'GET',
@@ -84,10 +84,10 @@ export const testServerConnectivity = async () => {
 export const apiRequest = async (endpoint, options = {}) => {
   // Check cache for GET requests (non-auth endpoints)
   const isGetRequest = !options.method || options.method === 'GET';
-  const isAuthEndpoint = endpoint.includes('/auth/');
+  const shouldCache = isGetRequest && shouldCacheEndpoint(endpoint);
   const cacheKey = getCacheKey(endpoint, options);
   
-  if (isGetRequest && !isAuthEndpoint) {
+  if (shouldCache) {
     const cachedResponse = getCachedResponse(cacheKey);
     if (cachedResponse) {
       return cachedResponse;
@@ -101,9 +101,9 @@ export const apiRequest = async (endpoint, options = {}) => {
   }
 
   // Create promise for deduplication
-  const requestPromise = performRequest(endpoint, options, isGetRequest, isAuthEndpoint, cacheKey);
+  const requestPromise = performRequest(endpoint, options, shouldCache, cacheKey);
   
-  if (isGetRequest && !isAuthEndpoint) {
+  if (shouldCache && NETWORK_CONFIG.OPTIMIZATION.DEDUPLICATE_REQUESTS) {
     PENDING_REQUESTS.set(cacheKey, requestPromise);
     try {
       const result = await requestPromise;
@@ -116,16 +116,13 @@ export const apiRequest = async (endpoint, options = {}) => {
   return await requestPromise;
 };
 
-const performRequest = async (endpoint, options, isGetRequest, isAuthEndpoint, cacheKey) => {
-  const urlsToTry = [
-    AUTH_CONFIG.BACKEND_URL,
-    ...AUTH_CONFIG.FALLBACK_URLS
-  ];
+const performRequest = async (endpoint, options, shouldCache, cacheKey) => {
+  const urlsToTry = getAllUrls();
 
   let lastError = null;
   
-  // Use reasonable timeouts for better user experience
-  const timeout = endpoint.includes('/auth/') ? 10000 : 5000;
+  // Use network config timeouts
+  const timeout = getTimeoutForEndpoint(endpoint);
 
   // Get authentication token from AsyncStorage
   const AsyncStorage = require('@react-native-async-storage/async-storage').default;
@@ -187,7 +184,7 @@ const performRequest = async (endpoint, options, isGetRequest, isAuthEndpoint, c
           }
           
           // Cache successful GET responses
-          if (isGetRequest && !isAuthEndpoint && response.ok) {
+          if (shouldCache && response.ok) {
             setCachedResponse(cacheKey, data);
           }
           
