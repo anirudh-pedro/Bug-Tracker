@@ -9,9 +9,11 @@ Implemented a comprehensive, centralized network configuration system optimized 
 ### 1. Created Core Configuration Files
 
 #### `frontend/src/config/networkConfig.js` (NEW)
+
 **Purpose:** Centralized network settings - single source of truth for all network behavior
 
 **Key Features:**
+
 - Environment-aware backend URLs (dev/production)
 - Mobile-optimized fallback URLs with deduplication
 - Endpoint-specific timeouts (auth: 12s, upload: 30s, default: 6s)
@@ -21,6 +23,7 @@ Implemented a comprehensive, centralized network configuration system optimized 
 - Mobile-specific optimizations
 
 **Helper Functions:**
+
 - `getTimeoutForEndpoint(endpoint)` - Dynamic timeout based on endpoint type
 - `shouldCacheEndpoint(endpoint)` - Determines if endpoint should be cached
 - `calculateRetryDelay(attempt)` - Exponential backoff with jitter
@@ -28,18 +31,22 @@ Implemented a comprehensive, centralized network configuration system optimized 
 - `getNetworkQuality(latency)` - Quality classification
 
 #### `frontend/src/config/apiConfig.js` (NEW)
+
 **Purpose:** API endpoint definitions and utilities
 
 **Key Features:**
+
 - Organized endpoint constants (AUTH, USERS, BUGS, PROJECTS, DASHBOARD, GITHUB)
 - Dynamic endpoint builders (e.g., `BY_ID(userId)`)
 - `buildApiUrl(baseUrl, endpoint)` - Construct full URLs
 - `requiresAuth(endpoint)` - Check if endpoint needs authentication
 
 #### `frontend/src/config/authConfig.js` (UPDATED)
+
 **Purpose:** Authentication configuration
 
 **Changes:**
+
 - Now imports settings from `networkConfig.js`
 - Removed hardcoded URLs and timeouts
 - Uses centralized configuration values
@@ -47,7 +54,9 @@ Implemented a comprehensive, centralized network configuration system optimized 
 ### 2. Updated Network Utilities
 
 #### `frontend/src/utils/networkUtils.js` (UPDATED)
+
 **Changes:**
+
 - Imports from `networkConfig.js` instead of `authConfig.js`
 - Uses centralized timeout, cache, and URL configuration
 - Implements `shouldCacheEndpoint()` for smarter caching
@@ -55,7 +64,9 @@ Implemented a comprehensive, centralized network configuration system optimized 
 - Improved deduplication with config-aware logic
 
 #### `frontend/src/utils/enhancedNetworkUtils.js` (UPDATED)
+
 **Changes:**
+
 - Imports helper functions from `networkConfig.js`
 - Removed duplicate `getTimeoutForEndpoint()` function
 - Uses `calculateRetryDelay()` for exponential backoff
@@ -65,7 +76,9 @@ Implemented a comprehensive, centralized network configuration system optimized 
 ### 3. Updated Backend Configuration
 
 #### `server/server.js` (UPDATED)
+
 **Changes:**
+
 - Environment-aware CORS configuration
 - Production mode restricts origins
 - Development mode allows all origins (with documentation)
@@ -74,7 +87,9 @@ Implemented a comprehensive, centralized network configuration system optimized 
 ### 4. Created Documentation
 
 #### `MOBILE_NETWORK_SETUP.md` (NEW)
+
 **Contents:**
+
 - Step-by-step setup guide for mobile networks
 - Mobile hotspot vs WiFi setup instructions
 - Firewall configuration (Windows/Mac/Linux)
@@ -84,7 +99,9 @@ Implemented a comprehensive, centralized network configuration system optimized 
 - Security notes
 
 #### `NETWORK_QUICK_REFERENCE.md` (NEW)
+
 **Contents:**
+
 - Quick reference for common tasks
 - IP address lookup commands
 - Firewall setup commands
@@ -94,7 +111,9 @@ Implemented a comprehensive, centralized network configuration system optimized 
 - Configuration checklists
 
 #### `NETWORK_ARCHITECTURE.md` (NEW)
+
 **Contents:**
+
 - Visual diagrams of configuration flow
 - Request flow diagrams
 - Network topology illustrations
@@ -104,7 +123,9 @@ Implemented a comprehensive, centralized network configuration system optimized 
 - Usage examples
 
 #### `README.md` (UPDATED)
+
 **Changes:**
+
 - Added network setup section
 - Quick start guide with IP configuration
 - Mobile network setup links
@@ -115,9 +136,11 @@ Implemented a comprehensive, centralized network configuration system optimized 
 ### 5. Created Helper Scripts
 
 #### `scripts/find-ip.js` (NEW)
+
 **Purpose:** Automatically detect and display network IP addresses
 
 **Features:**
+
 - Lists all available network interfaces
 - Shows IP and MAC addresses
 - Suggests which interface to use (WiFi/Ethernet)
@@ -125,15 +148,18 @@ Implemented a comprehensive, centralized network configuration system optimized 
 - Provides next steps for setup
 
 **Usage:**
+
 ```bash
 cd server
 npm run find-ip
 ```
 
 #### `scripts/test-network.js` (NEW)
+
 **Purpose:** Test connectivity to all configured backend URLs
 
 **Features:**
+
 - Tests all URLs from configuration
 - Tests multiple health endpoints per URL
 - Measures latency and quality
@@ -142,13 +168,16 @@ npm run find-ip
 - Generates configuration suggestions
 
 **Usage:**
+
 ```bash
 cd server
 npm run test-network
 ```
 
 #### `server/package.json` (UPDATED)
+
 **New Scripts:**
+
 - `npm run find-ip` - Find network IP addresses
 - `npm run test-network` - Test network configuration
 
@@ -157,17 +186,20 @@ npm run test-network
 ### Mobile Network Optimizations
 
 1. **Extended Timeouts**
+
    - Auth: 12s (up from 10s)
    - Default: 6s (up from 4s)
    - Upload: 30s (new)
    - Better suited for slower mobile connections
 
 2. **Aggressive Caching**
+
    - Duration: 3 minutes (up from 2 minutes)
    - Max size: 100 entries (up from 50)
    - Reduces mobile data usage
 
 3. **Intelligent Retries**
+
    - 3 retry attempts with exponential backoff
    - Jitter to prevent thundering herd
    - Max delay: 8 seconds
@@ -180,15 +212,18 @@ npm run test-network
 ### Developer Experience
 
 1. **Centralized Configuration**
+
    - Single file to update for network changes
    - No more scattered hardcoded values
    - Environment-aware settings
 
 2. **Helper Scripts**
+
    - `find-ip` - Automatically find correct IP
    - `test-network` - Verify configuration works
 
 3. **Comprehensive Documentation**
+
    - Step-by-step setup guides
    - Quick reference cards
    - Architecture diagrams
@@ -227,6 +262,7 @@ Documentation/
 ### Initial Setup
 
 1. **Find your IP:**
+
    ```bash
    cd server
    npm run find-ip
@@ -234,18 +270,21 @@ Documentation/
 
 2. **Update configuration:**
    Edit `frontend/src/config/networkConfig.js`:
+
    ```javascript
-   BACKEND_URL: isDevelopment 
+   BACKEND_URL: isDevelopment
      ? 'http://YOUR_IP:5000'  // ← Paste your IP here
      : 'https://your-production-api.com',
    ```
 
 3. **Test connectivity:**
+
    ```bash
    npm run test-network
    ```
 
 4. **Start server and app:**
+
    ```bash
    # Terminal 1
    cd server
@@ -268,6 +307,7 @@ Documentation/
 ### Making Configuration Changes
 
 #### Change timeout for all requests:
+
 ```javascript
 // networkConfig.js
 TIMEOUTS: {
@@ -276,9 +316,10 @@ TIMEOUTS: {
 ```
 
 #### Add a fallback URL:
+
 ```javascript
 // networkConfig.js
-FALLBACK_URLS: isDevelopment 
+FALLBACK_URLS: isDevelopment
   ? [
       'http://YOUR_NEW_IP:5000',  // Add your IP
       // ... existing URLs
@@ -287,6 +328,7 @@ FALLBACK_URLS: isDevelopment
 ```
 
 #### Disable caching for debugging:
+
 ```javascript
 // networkConfig.js
 CACHE: {
@@ -297,6 +339,7 @@ CACHE: {
 ## 🔧 Technical Details
 
 ### Request Flow
+
 1. App calls `apiRequest(endpoint, options)`
 2. Utils check cache (if GET request)
 3. Utils get timeout from `getTimeoutForEndpoint()`
@@ -307,17 +350,20 @@ CACHE: {
 8. Return data or throw user-friendly error
 
 ### Error Handling
+
 - Network errors categorized (TIMEOUT, CONNECTION_REFUSED, DNS_ERROR, etc.)
 - User-friendly messages for each error type
 - Auth errors handled specially (skip retries)
 
 ### Caching Strategy
+
 - GET requests cached (except auth endpoints)
 - 3-minute cache duration
 - Automatic cleanup when cache exceeds 100 entries
 - Cache key: `endpoint_optionsJSON`
 
 ### Retry Strategy
+
 - Base delay: 1 second
 - Exponential backoff: delay × 2^attempt
 - Maximum delay: 8 seconds
@@ -327,6 +373,7 @@ CACHE: {
 ## 🎉 Benefits
 
 ### For Mobile Network Users
+
 - ✅ Extended timeouts accommodate slower connections
 - ✅ Automatic retries handle spotty connections
 - ✅ Caching reduces data usage
@@ -334,6 +381,7 @@ CACHE: {
 - ✅ Fallback URLs ensure reliability
 
 ### For Developers
+
 - ✅ Single configuration file to maintain
 - ✅ Helper scripts automate setup
 - ✅ Comprehensive documentation
@@ -341,6 +389,7 @@ CACHE: {
 - ✅ Environment-aware (dev/production)
 
 ### For Production
+
 - ✅ Security-conscious CORS settings
 - ✅ Production URLs separate from dev
 - ✅ Easy to deploy with environment variables

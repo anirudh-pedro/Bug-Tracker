@@ -287,16 +287,18 @@ networkConfig.js exports:
 ## 🎯 Usage Examples
 
 ### Basic API Request
+
 ```javascript
-import { apiRequest } from '../utils/networkUtils';
+import { apiRequest } from "../utils/networkUtils";
 
 // Automatically uses configured timeouts, retries, and caching
-const bugs = await apiRequest('/api/bugs');
+const bugs = await apiRequest("/api/bugs");
 ```
 
 ### Test Server Connectivity
+
 ```javascript
-import { testServerConnectivity } from '../utils/networkUtils';
+import { testServerConnectivity } from "../utils/networkUtils";
 
 const server = await testServerConnectivity();
 // Tries all URLs with all health endpoints
@@ -304,8 +306,9 @@ const server = await testServerConnectivity();
 ```
 
 ### Monitor Network Quality
+
 ```javascript
-import { getNetworkQuality } from '../utils/enhancedNetworkUtils';
+import { getNetworkQuality } from "../utils/enhancedNetworkUtils";
 
 const quality = await getNetworkQuality();
 console.log(quality.quality); // 'good', 'fair', 'poor', 'offline'

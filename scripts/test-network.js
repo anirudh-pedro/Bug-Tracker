@@ -19,11 +19,11 @@ const colors = {
 
 // Test configuration - update these to match your networkConfig.js
 const URLS_TO_TEST = [
-  'http://172.16.8.229:5000',
-  'http://10.178.105.115:5000',
-  'http://192.168.43.1:5000',
-  'http://192.168.1.100:5000',
-  'http://localhost:5000'
+  'http://10.113.191.115:5000',  // Current WiFi IP
+  'http://172.16.8.229:5000',    // Ethernet IP
+  'http://10.178.105.115:5000',  // Alternative WiFi
+  'http://192.168.43.1:5000',    // Mobile hotspot
+  'http://localhost:5000'        // Localhost
 ];
 
 const ENDPOINTS_TO_TEST = [
