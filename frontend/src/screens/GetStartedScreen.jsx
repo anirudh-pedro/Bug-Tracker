@@ -338,18 +338,31 @@ const GetStartedScreen = ({ navigation, route }) => {
       console.log('✅ User onboarding completed:', response);
 
       // Save user data locally as well
+      const userIdentifier = user.uid || user.id;
+      const normalizedUsername = username.trim();
       const userData = {
-        uid: user.uid || user.id,
-        username: username.trim(),
+        uid: userIdentifier,
+        username: normalizedUsername,
         githubUrl: githubUrl.trim(),
         industry: industry,
         completedAt: new Date().toISOString()
       };
-      
-      await AsyncStorage.setItem(`user_data_${user.uid || user.id}`, JSON.stringify(userData));
-      await AsyncStorage.setItem(`user_onboarding_${user.uid || user.id}`, 'completed');
 
-      console.log('✅ Data saved locally');
+      const defaultUserDataKey = AUTH_CONFIG.STORAGE_KEYS.USER_DATA(userIdentifier);
+      const defaultOnboardingKey = AUTH_CONFIG.STORAGE_KEYS.ONBOARDING(userIdentifier);
+      const usernameUserDataKey = AUTH_CONFIG.STORAGE_KEYS.USER_DATA_BY_USERNAME(normalizedUsername);
+      const usernameOnboardingKey = AUTH_CONFIG.STORAGE_KEYS.ONBOARDING_BY_USERNAME(normalizedUsername);
+
+      await AsyncStorage.setItem(defaultUserDataKey, JSON.stringify(userData));
+      await AsyncStorage.setItem(defaultOnboardingKey, 'completed');
+      await AsyncStorage.setItem(usernameUserDataKey, JSON.stringify(userData));
+      await AsyncStorage.setItem(usernameOnboardingKey, 'completed');
+      await AsyncStorage.setItem(
+        AUTH_CONFIG.STORAGE_KEYS.CURRENT_USERNAME,
+        normalizedUsername
+      );
+
+      console.log('✅ Data saved locally with username scoping');
 
       // Call refresh function to update auth state in App.jsx
       const refreshProfileStatus = route?.params?.refreshProfileStatus;

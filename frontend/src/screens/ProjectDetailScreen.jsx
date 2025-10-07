@@ -15,6 +15,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { apiRequest } from '../utils/networkUtils';
+import Colors from '../theme/colors';
 
 const ProjectDetailScreen = ({navigation, route}) => {
   const {projectId, projectName} = route.params;
@@ -135,11 +136,11 @@ const ProjectDetailScreen = ({navigation, route}) => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'active': return '#10b981';
-      case 'completed': return '#667eea';
-      case 'inactive': return '#ff6b6b';
-      case 'archived': return '#888888';
-      default: return '#888888';
+      case 'active': return Colors.status.success;
+      case 'completed': return Colors.gradients.purple[0];
+      case 'inactive': return Colors.status.error;
+      case 'archived': return Colors.text.tertiary;
+      default: return Colors.text.tertiary;
     }
   };
 
@@ -155,7 +156,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#ff9500" />
+        <ActivityIndicator size="large" color={Colors.primary.main} />
         <Text style={styles.loadingText}>Loading project details...</Text>
       </View>
     );
@@ -164,7 +165,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
   if (!project) {
     return (
       <View style={styles.errorContainer}>
-        <Icon name="error-outline" size={48} color="#ff6b6b" />
+        <Icon name="error-outline" size={48} color={Colors.status.error} />
         <Text style={styles.errorText}>Project not found</Text>
         <TouchableOpacity 
           style={styles.backButton}
@@ -185,7 +186,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
             style={styles.backIconButton}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-back" size={24} color="#ffffff" />
+            <Icon name="arrow-back" size={24} color={Colors.text.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Project Details</Text>
           <View style={styles.headerSpacer} />
@@ -200,7 +201,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
         >
           {/* Project Header */}
           <LinearGradient
-            colors={['#667eea', '#764ba2']}
+            colors={Colors.gradients.purple}
             style={styles.projectHeader}
           >
             <View style={styles.projectTitleSection}>
@@ -230,12 +231,12 @@ const ProjectDetailScreen = ({navigation, route}) => {
             <Text style={styles.sectionTitle}>Project Statistics</Text>
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
-                <Icon name="bug-report" size={24} color="#ff6b6b" />
+                <Icon name="bug-report" size={24} color={Colors.status.error} />
                 <Text style={styles.statNumber}>{project.stats?.totalBugs || 0}</Text>
                 <Text style={styles.statLabel}>Total Bugs</Text>
               </View>
               <View style={styles.statCard}>
-                <Icon name="done" size={24} color="#10b981" />
+                <Icon name="done" size={24} color={Colors.status.success} />
                 <Text style={styles.statNumber}>{project.stats?.resolvedBugs || 0}</Text>
                 <Text style={styles.statLabel}>Resolved</Text>
               </View>
@@ -275,7 +276,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
               style={styles.editButton}
               onPress={handleEditProject}
             >
-              <Icon name="edit" size={18} color="#3498DB" />
+              <Icon name="edit" size={18} color={Colors.status.info} />
               <Text style={styles.editButtonText}>Edit</Text>
             </TouchableOpacity>
             
@@ -283,7 +284,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
               style={styles.deleteButton}
               onPress={handleDeleteProject}
             >
-              <Icon name="delete" size={18} color="#E74C3C" />
+              <Icon name="delete" size={18} color={Colors.status.error} />
               <Text style={styles.deleteButtonText}>Delete</Text>
             </TouchableOpacity>
           </View>
@@ -300,7 +301,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
                 }
               })}
             >
-              <Icon name="bug-report" size={20} color="#ffffff" />
+              <Icon name="bug-report" size={20} color={Colors.text.primary} />
               <Text style={styles.primaryButtonText}>View Bugs</Text>
             </TouchableOpacity>
             
@@ -314,7 +315,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
                 }
               })}
             >
-              <Icon name="add" size={20} color="#667eea" />
+              <Icon name="add" size={20} color={Colors.gradients.purple[0]} />
               <Text style={styles.secondaryButtonText}>Report Bug</Text>
             </TouchableOpacity>
           </View>
@@ -336,7 +337,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
                 onPress={() => setShowEditModal(false)}
                 style={styles.closeButton}
               >
-                <Icon name="close" size={24} color="#888888" />
+                <Icon name="close" size={24} color={Colors.text.tertiary} />
               </TouchableOpacity>
             </View>
 
@@ -348,7 +349,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
                   value={editName}
                   onChangeText={setEditName}
                   placeholder="Enter project name"
-                  placeholderTextColor="#888888"
+                  placeholderTextColor={Colors.text.tertiary}
                 />
               </View>
 
@@ -359,7 +360,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
                   value={editDescription}
                   onChangeText={setEditDescription}
                   placeholder="Enter project description"
-                  placeholderTextColor="#888888"
+                  placeholderTextColor={Colors.text.tertiary}
                   multiline={true}
                   numberOfLines={4}
                 />
@@ -380,7 +381,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
                   disabled={isEditing}
                 >
                   {isEditing ? (
-                    <ActivityIndicator size="small" color="#FFF" />
+                    <ActivityIndicator size="small" color={Colors.text.primary} />
                   ) : (
                     <Text style={styles.saveButtonText}>Save</Text>
                   )}
@@ -401,7 +402,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
         <View style={styles.modalOverlay}>
           <View style={styles.deleteModalContainer}>
             <View style={styles.deleteModalHeader}>
-              <Icon name="warning" size={48} color="#E74C3C" />
+              <Icon name="warning" size={48} color={Colors.status.error} />
               <Text style={styles.deleteModalTitle}>Delete Project</Text>
               <Text style={styles.deleteModalMessage}>
                 Are you sure you want to delete "{project?.name}"? This action cannot be undone and will also delete all associated bugs.
@@ -439,7 +440,7 @@ const ProjectDetailScreen = ({navigation, route}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background.primary,
   },
   safeArea: {
     flex: 1,
@@ -448,10 +449,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background.primary,
   },
   loadingText: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 16,
     marginTop: 16,
   },
@@ -459,23 +460,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background.primary,
     padding: 20,
   },
   errorText: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 18,
     marginTop: 16,
     marginBottom: 32,
   },
   backButton: {
-    backgroundColor: '#667eea',
+    backgroundColor: Colors.gradients.purple[0],
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   backButtonText: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -484,7 +485,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
   },
   backIconButton: {
     padding: 8,
@@ -493,7 +494,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
     textAlign: 'center',
   },
   headerSpacer: {
@@ -516,12 +517,12 @@ const styles = StyleSheet.create({
   projectName: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 4,
   },
   projectKey: {
     fontSize: 16,
-    color: '#ffffff',
+    color: Colors.text.primary,
     opacity: 0.8,
   },
   statusBadge: {
@@ -532,7 +533,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   section: {
     margin: 20,
@@ -540,12 +541,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 16,
   },
   description: {
     fontSize: 16,
-    color: '#cccccc',
+    color: Colors.text.secondary,
     lineHeight: 24,
   },
   statsGrid: {
@@ -554,7 +555,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   statCard: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -564,16 +565,16 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginTop: 8,
   },
   statLabel: {
     fontSize: 12,
-    color: '#cccccc',
+    color: Colors.text.secondary,
     marginTop: 4,
   },
   infoGrid: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     padding: 16,
   },
@@ -583,15 +584,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: Colors.border.light,
   },
   infoLabel: {
     fontSize: 16,
-    color: '#cccccc',
+    color: Colors.text.secondary,
   },
   infoValue: {
     fontSize: 16,
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontWeight: '600',
     flex: 1,
     textAlign: 'right',
@@ -602,7 +603,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryButton: {
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -613,10 +614,10 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   secondaryButton: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: Colors.background.card,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -624,12 +625,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
     borderWidth: 1,
-    borderColor: '#667eea',
+    borderColor: Colors.gradients.purple[0],
   },
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#667eea',
+    color: Colors.gradients.purple[0],
   },
   // Edit/Delete Section Styles
   editDeleteSection: {
@@ -638,7 +639,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: Colors.border.light,
   },
   editButton: {
     flex: 1,
@@ -648,15 +649,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.background.card,
     borderWidth: 1,
-    borderColor: '#3498DB',
+    borderColor: Colors.status.info,
     gap: 6,
   },
   editButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3498DB',
+    color: Colors.status.info,
   },
   deleteButton: {
     flex: 1,
@@ -666,15 +667,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.background.card,
     borderWidth: 1,
-    borderColor: '#E74C3C',
+    borderColor: Colors.status.error,
     gap: 6,
   },
   deleteButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#E74C3C',
+    color: Colors.status.error,
   },
   // Modal Styles
   modalOverlay: {
@@ -684,7 +685,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     width: '85%',
     maxHeight: '80%',
@@ -695,12 +696,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: Colors.border.light,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   closeButton: {
     padding: 4,
@@ -714,18 +715,18 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.background.card,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#ffffff',
+    color: Colors.text.primary,
     borderWidth: 1,
-    borderColor: '#444444',
+    borderColor: Colors.border.dark,
   },
   textArea: {
     height: 100,
@@ -741,29 +742,29 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
     borderRadius: 8,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.background.card,
     borderWidth: 1,
-    borderColor: '#444444',
+    borderColor: Colors.border.dark,
   },
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   saveButton: {
     flex: 1,
     paddingVertical: 12,
     alignItems: 'center',
     borderRadius: 8,
-    backgroundColor: '#3498DB',
+    backgroundColor: Colors.status.info,
   },
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFF',
+    color: Colors.text.primary,
   },
   deleteModalContainer: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     padding: 24,
     width: '85%',
@@ -776,13 +777,13 @@ const styles = StyleSheet.create({
   deleteModalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#E74C3C',
+    color: Colors.status.error,
     marginTop: 12,
     marginBottom: 8,
   },
   deleteModalMessage: {
     fontSize: 16,
-    color: '#cccccc',
+    color: Colors.text.secondary,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -791,12 +792,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
     borderRadius: 8,
-    backgroundColor: '#E74C3C',
+    backgroundColor: Colors.status.error,
   },
   confirmDeleteButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFF',
+    color: Colors.text.primary,
   },
 });
 

@@ -1,5 +1,5 @@
-import NETWORK_CONFIG, { 
-  getAllUrls, 
+import NETWORK_CONFIG, {
+  getAllUrls,
   getTimeoutForEndpoint as getTimeout,
   calculateRetryDelay,
   getNetworkQuality as getQualityFromLatency
@@ -10,6 +10,16 @@ import { requiresAuth } from '../config/apiConfig';
  * Enhanced network utility with improved error handling and retry logic
  * Optimized for mobile networks
  */
+
+let inMemoryAuthToken = null;
+
+export const setInMemoryAuthToken = (token) => {
+  inMemoryAuthToken = token;
+};
+
+export const clearInMemoryAuthToken = () => {
+  inMemoryAuthToken = null;
+};
 
 // Network error types for better categorization
 export const NETWORK_ERROR_TYPES = {
@@ -110,7 +120,7 @@ export const apiRequest = async (endpoint, options = {}) => {
   const timeout = getTimeout(endpoint);
 
   // Get authentication token
-  const authToken = await getAuthToken();
+  const authToken = await getAuthToken(options.authToken);
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     console.log(`🔄 API Request attempt ${attempt + 1}/${maxRetries}`);
@@ -141,6 +151,16 @@ export const apiRequest = async (endpoint, options = {}) => {
             authError: true
           };
         }
+
+        // Break out early for non-recoverable network issues
+        if ([
+          NETWORK_ERROR_TYPES.CONNECTION_REFUSED,
+          NETWORK_ERROR_TYPES.DNS_ERROR
+        ].includes(errorType)) {
+          console.log('🚫 Fatal network error detected - skipping additional retries');
+          attempt = maxRetries - 1; // Prevent outer retry loop from running again
+          break;
+        }
       }
     }
     
@@ -155,20 +175,34 @@ export const apiRequest = async (endpoint, options = {}) => {
   console.log('❌ All API endpoints failed after all retries');
   
   // Provide user-friendly error messages based on error type
-  const errorType = categorizeNetworkError(lastError);
+  const errorType = categorizeNetworkError(lastError || new Error('Network request failed'));
   const userMessage = getUserFriendlyErrorMessage(errorType);
+
+  const networkError = new Error(userMessage);
+  networkError.code = errorType;
+  networkError.cause = lastError;
   
-  throw new Error(userMessage);
+  throw networkError;
 };
 
 // Get authentication token with error handling
-const getAuthToken = async () => {
+const getAuthToken = async (overrideToken = null) => {
   try {
+    if (overrideToken) {
+      inMemoryAuthToken = overrideToken;
+      return overrideToken;
+    }
+
+    if (inMemoryAuthToken) {
+      return inMemoryAuthToken;
+    }
+
     const AsyncStorage = require('@react-native-async-storage/async-storage').default;
     const token = await AsyncStorage.getItem('userToken');
     
     if (token) {
       console.log('🔑 Using auth token for API request');
+      inMemoryAuthToken = token;
     } else {
       console.log('⚠️ No auth token found');
     }
@@ -322,5 +356,7 @@ export default {
   checkNetworkConnectivity,
   getNetworkQuality,
   categorizeNetworkError,
-  NETWORK_ERROR_TYPES
+  NETWORK_ERROR_TYPES,
+  setInMemoryAuthToken,
+  clearInMemoryAuthToken
 };

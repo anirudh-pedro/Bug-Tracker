@@ -21,6 +21,9 @@ export const AUTH_CONFIG = {
     USER_TOKEN: 'userToken',
     USER_DATA: (uid) => `user_data_${uid}`,
     ONBOARDING: (uid) => `user_onboarding_${uid}`,
+    CURRENT_USERNAME: 'currentUsername',
+    USER_DATA_BY_USERNAME: (username) => `user_data_username_${username}`,
+    ONBOARDING_BY_USERNAME: (username) => `user_onboarding_username_${username}`,
   }
 };
 

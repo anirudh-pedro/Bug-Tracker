@@ -22,6 +22,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiRequest } from '../utils/enhancedNetworkUtils';
+import Colors from '../theme/colors';
 
 const {width: screenWidth} = Dimensions.get('window');
 const isTablet = screenWidth >= 768;
@@ -101,10 +102,9 @@ const HomeScreen = ({ navigation, route }) => {
         if (userStatsRes.success && userStatsRes.data) {
           const userStats = userStatsRes.data.stats;
           setStatsData([
-            { id: '1', title: 'Bugs Resolved', count: userStats.bugsResolved || 0, icon: 'check-circle', color: '#ff9500', bgColor: '#2d1f0a' },
-            { id: '2', title: 'Bugs Reported', count: userStats.bugsReported || 0, icon: 'bug-report', color: '#ff9500', bgColor: '#2d1f0a' },
-            { id: '3', title: 'Projects Created', count: userStats.projectsCreated || 0, icon: 'folder', color: '#ff9500', bgColor: '#2d1f0a' },
-            { id: '4', title: 'Active/Open Bugs', count: userStats.activeBugs || 0, icon: 'pending', color: '#ff9500', bgColor: '#2d1f0a' },
+            { id: '1', title: 'Bugs Resolved', count: userStats.bugsResolved || 0, icon: 'check-circle', gradient: Colors.gradients.emerald, iconBg: 'rgba(16, 185, 129, 0.15)' },
+            { id: '2', title: 'Bugs Reported', count: userStats.bugsReported || 0, icon: 'bug-report', gradient: Colors.gradients.amber, iconBg: 'rgba(245, 158, 11, 0.15)' },
+            { id: '3', title: 'Projects', count: userStats.projectsCreated || 0, icon: 'folder', gradient: Colors.gradients.blue, iconBg: 'rgba(59, 130, 246, 0.15)' },
           ]);
           setUserPoints(userStats.totalPoints || 0);
           
@@ -179,27 +179,44 @@ const HomeScreen = ({ navigation, route }) => {
     }
   }, []);
 
-  // Stats card component
+  // Stats card component with modern gradient design
   const renderStatCard = ({ item, index }) => {
-    const cardWidth = isTablet ? (screenWidth - 80) / 4 : (screenWidth - 48) / 2;
+    const cardWidth = (screenWidth - 48) / 3; // 3 cards in a row with gaps
+    const isBugsReported = item.title === 'Bugs Reported';
     
     return (
       <TouchableOpacity 
         style={[
-          styles.statCard, 
+          styles.modernStatCard, 
           { 
             width: cardWidth,
-            backgroundColor: item.bgColor,
-            borderColor: item.color,
+            marginRight: (index < 2) ? 8 : 0, // Small gap between cards
           }
         ]}
         onPress={() => handleStatCardPress(item)}
+        activeOpacity={0.7}
       >
-        <View style={styles.statIconContainer}>
-          <Icon name={item.icon} size={28} color={item.color} />
-        </View>
-        <Text style={styles.statNumber}>{item.count}</Text>
-        <Text style={styles.statLabel}>{item.title}</Text>
+        <LinearGradient
+          colors={[
+            item.gradient[0] + '40', // Add transparency (25% opacity)
+            item.gradient[1] + '40'
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.statGradient}
+        >
+          <View style={styles.modernStatContent}>
+            <View style={[styles.modernStatIconContainer, { backgroundColor: item.iconBg }]}>
+              <Icon name={item.icon} size={24} color={Colors.text.primary} />
+            </View>
+            <View style={styles.modernStatTextContainer}>
+              <Text style={styles.modernStatNumber}>
+                {item.count}
+              </Text>
+              <Text style={styles.modernStatLabel}>{item.title}</Text>
+            </View>
+          </View>
+        </LinearGradient>
       </TouchableOpacity>
     );
   };
@@ -221,14 +238,14 @@ const HomeScreen = ({ navigation, route }) => {
               style={styles.projectMenuButton}
               onPress={() => handleProjectMenuPress(item)}
             >
-              <Icon name="more-vert" size={20} color="#888888" />
+              <Icon name="more-vert" size={20} color={Colors.text.tertiary} />
             </TouchableOpacity>
           </View>
         </View>
         <Text style={styles.projectOwner}>by {item.owner}</Text>
         <Text style={styles.projectDescription}>{item.description}</Text>
         <View style={styles.projectFooter}>
-          <Icon name="link" size={14} color="#ff9500" />
+          <Icon name="link" size={14} color={Colors.primary.main} />
           <Text style={styles.repoText}>{item.repo}</Text>
         </View>
       </TouchableOpacity>
@@ -250,24 +267,22 @@ const HomeScreen = ({ navigation, route }) => {
       <Text style={styles.bugProject}>{item.project}</Text>
       <View style={styles.bugFooter}>
         <Text style={styles.bugTime}>{item.lastUpdated}</Text>
-        <Icon name="arrow-forward" size={14} color="#888888" />
+        <Icon name="arrow-forward" size={14} color={Colors.text.tertiary} />
       </View>
     </TouchableOpacity>
   );
 
   // Recent contribution card component
   const renderContributionCard = ({ item }) => {
-    const getStatusColor = (status) => {
-      switch (status) {
-        case 'Resolved': return '#10b981';
-        case 'PR Submitted': return '#f59e0b';
-        case 'Open': return '#ff6b6b';
-        case 'In Progress': return '#667eea';
-        default: return '#888888';
-      }
-    };
-
-    const getStatusIcon = (type) => {
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Resolved': return Colors.status.success;
+      case 'PR Submitted': return Colors.status.warning;
+      case 'Open': return Colors.status.error;
+      case 'In Progress': return Colors.status.warning;
+      default: return Colors.text.tertiary;
+    }
+  };    const getStatusIcon = (type) => {
       switch (type) {
         case 'fix': return 'check-circle';
         case 'pr': return 'code';
@@ -295,7 +310,7 @@ const HomeScreen = ({ navigation, route }) => {
             <Text style={styles.contributionTime}>{item.timestamp}</Text>
           </View>
         </View>
-        <Icon name="arrow-forward" size={16} color="#ff9500" />
+        <Icon name="arrow-forward" size={16} color={Colors.primary.main} />
       </TouchableOpacity>
     );
   };
@@ -304,7 +319,7 @@ const HomeScreen = ({ navigation, route }) => {
   const handleStatCardPress = (stat) => {
     console.log('Stat card pressed:', stat.title);
     // Navigate to relevant screens based on stat type
-    if (stat.title === 'Active Bugs' || stat.title === 'Open Issues') {
+    if (stat.title === 'Bugs Reported' || stat.title === 'Active Bugs' || stat.title === 'Open Issues' || stat.title === 'Bugs Resolved') {
       navigation.navigate('Bugs');
     } else if (stat.title === 'Projects') {
       navigation.navigate('Projects');
@@ -569,8 +584,8 @@ const HomeScreen = ({ navigation, route }) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#ff9500"
-              colors={['#ff9500']}
+              tintColor={Colors.primary.main}
+              colors={[Colors.primary.main]}
             />
           }
         >
@@ -581,7 +596,7 @@ const HomeScreen = ({ navigation, route }) => {
                 <View style={styles.logoContainer}>
                   <View style={styles.logoImageContainer}>
                     <View style={styles.logoPlaceholder}>
-                      <Icon name="bug-report" size={24} color="#ff9500" />
+                      <Icon name="bug-report" size={24} color={Colors.primary.main} />
                     </View>
                   </View>
                   <View style={styles.logoText}>
@@ -596,7 +611,7 @@ const HomeScreen = ({ navigation, route }) => {
                   style={styles.pointsButton}
                   onPress={() => navigation.navigate('Points')}
                 >
-                  <Icon name="emoji-events" size={20} color="#ff9500" />
+                  <Icon name="emoji-events" size={20} color={Colors.primary.main} />
                   <Text style={styles.pointsButtonText}>{userPoints.toLocaleString()}</Text>
                 </TouchableOpacity>
                 
@@ -615,7 +630,7 @@ const HomeScreen = ({ navigation, route }) => {
                     </View>
                   )}
                   <View style={styles.profileBadge}>
-                    <Icon name="person" size={12} color="#ffffff" />
+                    <Icon name="person" size={12} color={Colors.text.primary} />
                   </View>
                 </TouchableOpacity>
                 
@@ -647,7 +662,7 @@ const HomeScreen = ({ navigation, route }) => {
                         onPress={handleProfileSettings}
                         activeOpacity={0.7}
                       >
-                        <Icon name="person" size={20} color="#a0a0a0" />
+                        <Icon name="person" size={20} color={Colors.text.tertiary} />
                         <Text style={styles.dropdownItemText}>Profile Settings</Text>
                       </TouchableOpacity>
                       
@@ -656,7 +671,7 @@ const HomeScreen = ({ navigation, route }) => {
                         onPress={handleAppSettings}
                         activeOpacity={0.7}
                       >
-                        <Icon name="settings" size={20} color="#a0a0a0" />
+                        <Icon name="settings" size={20} color={Colors.text.tertiary} />
                         <Text style={styles.dropdownItemText}>App Settings</Text>
                       </TouchableOpacity>
                       
@@ -665,7 +680,7 @@ const HomeScreen = ({ navigation, route }) => {
                         onPress={handleHelpSupport}
                         activeOpacity={0.7}
                       >
-                        <Icon name="help" size={20} color="#a0a0a0" />
+                        <Icon name="help" size={20} color={Colors.text.tertiary} />
                         <Text style={styles.dropdownItemText}>Help & Support</Text>
                       </TouchableOpacity>
                       
@@ -676,7 +691,7 @@ const HomeScreen = ({ navigation, route }) => {
                         onPress={confirmSignOut}
                         activeOpacity={0.7}
                       >
-                        <Icon name="logout" size={20} color="#ef4444" />
+                        <Icon name="logout" size={20} color={Colors.status.error} />
                         <Text style={[styles.dropdownItemText, styles.logoutText]}>
                           Sign Out
                         </Text>
@@ -708,10 +723,10 @@ const HomeScreen = ({ navigation, route }) => {
                 data={statsData || []}
                 renderItem={renderStatCard}
                 keyExtractor={(item, index) => item?.id || `stat-${index}`}
-                numColumns={isTablet ? 4 : 2}
+                numColumns={3}
                 scrollEnabled={false}
                 contentContainerStyle={styles.statsContainer}
-                columnWrapperStyle={isTablet ? undefined : styles.statsRow}
+                columnWrapperStyle={styles.statsRow}
               />
             </View>
 
@@ -722,16 +737,16 @@ const HomeScreen = ({ navigation, route }) => {
               {/* Search Bar */}
               <View style={styles.searchContainer}>
                 <View style={styles.searchBar}>
-                  <Icon name="search" size={20} color="#666666" />
+                  <Icon name="search" size={20} color={Colors.text.muted} />
                   <TextInput
                     style={styles.searchInput}
                     placeholder="Search projects or bugs..."
-                    placeholderTextColor="#666666"
+                    placeholderTextColor={Colors.text.muted}
                     value={searchQuery}
                     onChangeText={handleSearch}
                   />
                   <TouchableOpacity>
-                    <Icon name="tune" size={20} color="#666666" />
+                    <Icon name="tune" size={20} color={Colors.text.muted} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -805,11 +820,11 @@ const HomeScreen = ({ navigation, route }) => {
               style={styles.closeButton}
               onPress={closeCreateProjectModal}
             >
-              <Icon name="close" size={24} color="#ffffff" />
+              <Icon name="close" size={24} color={Colors.text.primary} />
             </TouchableOpacity>
 
             <View style={styles.rocketContainer}>
-              <Icon name="rocket-launch" size={40} color="#ffffff" />
+              <Icon name="rocket-launch" size={40} color={Colors.text.primary} />
             </View>
 
             <Text style={styles.modalTitle}>Create your first project</Text>
@@ -818,7 +833,7 @@ const HomeScreen = ({ navigation, route }) => {
               <TextInput
                 style={styles.projectInput}
                 placeholder="Project name"
-                placeholderTextColor="#888888"
+                placeholderTextColor={Colors.text.tertiary}
                 value={projectName}
                 onChangeText={setProjectName}
                 autoFocus={true}
@@ -852,7 +867,7 @@ const HomeScreen = ({ navigation, route }) => {
               style={styles.menuOption}
               onPress={handleEditProject}
             >
-              <Icon name="edit" size={20} color="#ff9500" />
+              <Icon name="edit" size={20} color={Colors.primary.main} />
               <Text style={styles.menuOptionText}>Edit Project</Text>
             </TouchableOpacity>
             
@@ -860,7 +875,7 @@ const HomeScreen = ({ navigation, route }) => {
               style={[styles.menuOption, styles.deleteOption]}
               onPress={handleDeleteProject}
             >
-              <Icon name="delete" size={20} color="#ff4444" />
+              <Icon name="delete" size={20} color={Colors.status.error} />
               <Text style={[styles.menuOptionText, styles.deleteOptionText]}>Delete Project</Text>
             </TouchableOpacity>
           </View>
@@ -882,7 +897,7 @@ const HomeScreen = ({ navigation, route }) => {
                 style={styles.closeButton}
                 onPress={() => setShowEditProjectModal(false)}
               >
-                <Icon name="close" size={24} color="#ffffff" />
+                <Icon name="close" size={24} color={Colors.text.primary} />
               </TouchableOpacity>
             </View>
 
@@ -892,7 +907,7 @@ const HomeScreen = ({ navigation, route }) => {
                 <TextInput
                   style={styles.projectInput}
                   placeholder="Enter project name"
-                  placeholderTextColor="#888888"
+                  placeholderTextColor={Colors.text.tertiary}
                   value={editProjectName}
                   onChangeText={setEditProjectName}
                 />
@@ -903,7 +918,7 @@ const HomeScreen = ({ navigation, route }) => {
                 <TextInput
                   style={styles.projectInput}
                   placeholder="Enter project key (e.g., PROJ)"
-                  placeholderTextColor="#888888"
+                  placeholderTextColor={Colors.text.tertiary}
                   value={editProjectKey}
                   onChangeText={setEditProjectKey}
                   autoCapitalize="characters"
@@ -915,7 +930,7 @@ const HomeScreen = ({ navigation, route }) => {
                 <TextInput
                   style={[styles.projectInput, styles.textArea]}
                   placeholder="Enter project description"
-                  placeholderTextColor="#888888"
+                  placeholderTextColor={Colors.text.tertiary}
                   value={editProjectDescription}
                   onChangeText={setEditProjectDescription}
                   multiline={true}
@@ -940,11 +955,11 @@ const HomeScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background.primary,
   },
   safeArea: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background.primary,
   },
   scrollView: {
     flex: 1,
@@ -964,7 +979,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a1a',
+    borderBottomColor: Colors.border.light,
   },
   logoSection: {
     flex: 1,
@@ -984,11 +999,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 8,
-    backgroundColor: '#111111',
+    backgroundColor: Colors.background.secondary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: Colors.border.light,
   },
   logoText: {
     flex: 1,
@@ -996,13 +1011,13 @@ const styles = StyleSheet.create({
   logoTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   logoSubtitle: {
     fontSize: 10,
-    color: '#666666',
+    color: Colors.text.muted,
     fontWeight: '500',
     letterSpacing: 0.3,
   },
@@ -1015,18 +1030,18 @@ const styles = StyleSheet.create({
   pointsButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111111',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 18,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: Colors.border.light,
     gap: 6,
   },
   pointsButtonText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#ff9500',
+    color: Colors.primary.main,
   },
   profileIconContainer: {
     position: 'relative',
@@ -1036,22 +1051,22 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: Colors.border.light,
   },
   topDefaultAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#222222',
+    backgroundColor: Colors.background.card,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: Colors.border.light,
   },
   topAvatarText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   profileBadge: {
     position: 'absolute',
@@ -1060,11 +1075,11 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: '#27AE60',
+    backgroundColor: Colors.status.success,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#000000',
+    borderColor: Colors.background.primary,
   },
   
   // Dropdown Styles
@@ -1084,10 +1099,10 @@ const styles = StyleSheet.create({
     zIndex: 998,
   },
   dropdownContent: {
-    backgroundColor: '#111111',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: Colors.border.light,
     paddingVertical: 4,
     zIndex: 999,
   },
@@ -1095,23 +1110,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#222222',
+    borderBottomColor: Colors.border.light,
     marginBottom: 4,
   },
   dropdownUserName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 2,
   },
   dropdownUserEmail: {
     fontSize: 11,
-    color: '#666666',
+    color: Colors.text.muted,
     fontWeight: '400',
   },
   dropdownUserIndustry: {
     fontSize: 10,
-    color: '#ff9500',
+    color: Colors.primary.main,
     fontWeight: '500',
     marginTop: 2,
   },
@@ -1124,20 +1139,20 @@ const styles = StyleSheet.create({
   },
   dropdownItemText: {
     fontSize: 13,
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontWeight: '500',
     flex: 1,
   },
   dropdownDivider: {
     height: 1,
-    backgroundColor: '#222222',
+    backgroundColor: Colors.border.light,
     marginVertical: 4,
   },
   logoutItem: {
     marginTop: 0,
   },
   logoutText: {
-    color: '#ff4444',
+    color: Colors.status.error,
     fontWeight: '600',
   },
   
@@ -1155,13 +1170,13 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 4,
     letterSpacing: -0.3,
   },
   dateText: {
     fontSize: 14,
-    color: '#666666',
+    color: Colors.text.muted,
     fontWeight: '500',
   },
 
@@ -1170,21 +1185,20 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   statsContainer: {
-    paddingTop: 16,
+    paddingTop: 12,
   },
   statsRow: {
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    justifyContent: 'flex-start',
   },
   statCard: {
-    backgroundColor: '#111111',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     marginBottom: 12,
     borderWidth: 2,
     // Shadow for depth
-    shadowColor: '#000',
+    shadowColor: Colors.background.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -1196,14 +1210,71 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#cccccc',
+    color: Colors.text.secondary,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  
+  // Modern gradient stat cards
+  modernStatCard: {
+    marginBottom: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: Colors.background.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+  },
+  statGradient: {
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)', // Transparent background
+  },
+  modernStatContent: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modernStatIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    shadowColor: Colors.background.primary,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  modernStatTextContainer: {
+    alignItems: 'center',
+  },
+  modernStatNumber: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: Colors.text.primary,
+    marginBottom: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  modernStatLabel: {
+    fontSize: 10,
+    color: Colors.text.primary,
+    fontWeight: '600',
+    opacity: 0.85,
+    textAlign: 'center',
+    lineHeight: 13,
   },
 
   // 2. Search + Trending Section
@@ -1215,19 +1286,19 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   searchBar: {
-    backgroundColor: '#111111',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: Colors.border.light,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginLeft: 12,
     fontWeight: '400',
   },
@@ -1256,18 +1327,18 @@ const styles = StyleSheet.create({
   columnTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
     letterSpacing: -0.1,
   },
 
   // Project Cards
   projectCard: {
-    backgroundColor: '#111111',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: Colors.border.light,
   },
   projectHeader: {
     flexDirection: 'row',
@@ -1278,32 +1349,32 @@ const styles = StyleSheet.create({
   projectName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     flex: 1,
     marginRight: 8,
   },
   projectOwner: {
     fontSize: 11,
-    color: '#888888',
+    color: Colors.text.tertiary,
     fontWeight: '500',
     marginBottom: 6,
   },
   bugCountBadge: {
-    backgroundColor: '#222222',
+    backgroundColor: Colors.background.card,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: Colors.border.light,
   },
   bugCountText: {
     fontSize: 10,
-    color: '#ff6b6b',
+    color: Colors.status.error,
     fontWeight: '600',
   },
   projectDescription: {
     fontSize: 12,
-    color: '#888888',
+    color: Colors.text.tertiary,
     fontWeight: '400',
     marginBottom: 10,
     lineHeight: 16,
@@ -1314,19 +1385,19 @@ const styles = StyleSheet.create({
   },
   repoText: {
     fontSize: 11,
-    color: '#667eea',
+    color: Colors.status.info,
     marginLeft: 6,
     fontWeight: '500',
   },
 
   // Bug Cards
   bugCard: {
-    backgroundColor: '#111111',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: Colors.border.light,
   },
   bugHeader: {
     flexDirection: 'row',
@@ -1337,7 +1408,7 @@ const styles = StyleSheet.create({
   bugTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     flex: 1,
     marginRight: 8,
     lineHeight: 18,
@@ -1349,21 +1420,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   priorityHigh: {
-    backgroundColor: '#2d1b1b',
-    borderColor: '#ff4444',
+    backgroundColor: 'rgba(255, 68, 68, 0.15)',
+    borderColor: Colors.status.error,
   },
   priorityMedium: {
-    backgroundColor: '#2d2416',
-    borderColor: '#f59e0b',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: Colors.status.warning,
   },
   priorityText: {
     fontSize: 9,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   bugProject: {
     fontSize: 11,
-    color: '#888888',
+    color: Colors.text.tertiary,
     fontWeight: '500',
     marginBottom: 10,
   },
@@ -1374,7 +1445,7 @@ const styles = StyleSheet.create({
   },
   bugTime: {
     fontSize: 10,
-    color: '#666666',
+    color: Colors.text.muted,
     fontWeight: '400',
   },
 
@@ -1383,12 +1454,12 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   contributionCard: {
-    backgroundColor: '#111111',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: Colors.border.light,
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
@@ -1396,7 +1467,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#222222',
+    backgroundColor: Colors.background.card,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1407,13 +1478,13 @@ const styles = StyleSheet.create({
   contributionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 4,
     lineHeight: 18,
   },
   contributionProject: {
     fontSize: 12,
-    color: '#888888',
+    color: Colors.text.tertiary,
     fontWeight: '500',
     marginBottom: 8,
   },
@@ -1432,11 +1503,11 @@ const styles = StyleSheet.create({
   contributionStatusText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   contributionTime: {
     fontSize: 11,
-    color: '#666666',
+    color: Colors.text.muted,
     fontWeight: '400',
   },
 
@@ -1454,18 +1525,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
     letterSpacing: -0.2,
   },
   seeAllText: {
     fontSize: 13,
-    color: '#ff6b6b',
+    color: Colors.status.error,
     fontWeight: '600',
   },
 
   errorText: {
     fontSize: 16,
-    color: '#ff4444',
+    color: Colors.status.error,
     textAlign: 'center',
     marginTop: 50,
     fontWeight: '500',
@@ -1480,14 +1551,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   modalContainer: {
-    backgroundColor: '#333333',
+    backgroundColor: Colors.border.light,
     borderRadius: 20,
     padding: 30,
     alignItems: 'center',
     minWidth: 300,
     maxWidth: 350,
     elevation: 10,
-    shadowColor: '#000000',
+    shadowColor: Colors.background.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1500,7 +1571,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#555555',
+    backgroundColor: Colors.border.dark,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
@@ -1510,12 +1581,12 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#555555',
+    backgroundColor: Colors.border.dark,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
     elevation: 5,
-    shadowColor: '#ffffff',
+    shadowColor: Colors.text.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -1523,7 +1594,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: Colors.text.primary,
     textAlign: 'center',
     marginBottom: 30,
   },
@@ -1532,28 +1603,28 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   projectInput: {
-    backgroundColor: '#555555',
+    backgroundColor: Colors.border.dark,
     borderRadius: 8,
     paddingHorizontal: 15,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#ffffff',
+    color: Colors.text.primary,
     borderBottomWidth: 2,
-    borderBottomColor: '#888888',
+    borderBottomColor: Colors.text.tertiary,
   },
   createButton: {
-    backgroundColor: '#ff6b6b',
+    backgroundColor: Colors.status.error,
     borderRadius: 25,
     paddingVertical: 12,
     paddingHorizontal: 40,
     elevation: 3,
-    shadowColor: '#ff6b6b',
+    shadowColor: Colors.status.error,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
   },
   createButtonText: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -1574,7 +1645,7 @@ const styles = StyleSheet.create({
   
   // Project menu modal styles
   projectMenuContainer: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     padding: 8,
     minWidth: 150,
@@ -1582,7 +1653,7 @@ const styles = StyleSheet.create({
     top: 100,
     right: 20,
     elevation: 10,
-    shadowColor: '#000000',
+    shadowColor: Colors.background.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1595,29 +1666,29 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   menuOptionText: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 16,
     marginLeft: 12,
     fontWeight: '500',
   },
   deleteOption: {
     borderTopWidth: 1,
-    borderTopColor: '#333333',
+    borderTopColor: Colors.border.light,
     marginTop: 4,
   },
   deleteOptionText: {
-    color: '#ff4444',
+    color: Colors.status.error,
   },
   
   // Edit project modal styles
   editModalContainer: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 20,
     padding: 0,
     width: '90%',
     maxHeight: '80%',
     elevation: 10,
-    shadowColor: '#000000',
+    shadowColor: Colors.background.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -1628,18 +1699,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: Colors.border.light,
   },
   editModalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   editFormContainer: {
     padding: 20,
   },
   inputLabel: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
@@ -1650,14 +1721,14 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   updateButton: {
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 20,
   },
   updateButtonText: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 16,
     fontWeight: 'bold',
   },

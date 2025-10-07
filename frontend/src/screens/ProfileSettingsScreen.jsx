@@ -15,6 +15,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
 import { apiRequest } from '../utils/enhancedNetworkUtils';
+import Colors from '../theme/colors';
 
 const ProfileSettingsScreen = ({ navigation }) => {
   const user = auth().currentUser;
@@ -261,11 +262,11 @@ const ProfileSettingsScreen = ({ navigation }) => {
   };
 
   const getUsernameIconColor = () => {
-    if (checkingUsername) return '#fbbf24';
-    if (usernameError) return '#ef4444';
-    if (usernameAvailable === true) return '#10b981';
-    if (usernameAvailable === false) return '#ef4444';
-    return '#6b7280';
+    if (checkingUsername) return Colors.status.warning;
+    if (usernameError) return Colors.status.error;
+    if (usernameAvailable === true) return Colors.status.success;
+    if (usernameAvailable === false) return Colors.status.error;
+    return Colors.text.muted;
   };
 
   const getUsernameIconName = () => {
@@ -277,7 +278,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient colors={['#0a0a0a', '#1a1a2e', '#16213e']} style={styles.container}>
+    <LinearGradient colors={[Colors.background.primary, Colors.background.secondary, Colors.background.card]} style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
@@ -285,7 +286,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-back" size={24} color="#ffffff" />
+            <Icon name="arrow-back" size={24} color={Colors.text.primary} />
           </TouchableOpacity>
           <Text style={styles.title}>Profile Settings</Text>
           <View style={styles.placeholder} />
@@ -396,10 +397,10 @@ const ProfileSettingsScreen = ({ navigation }) => {
               disabled={loading || usernameError || usernameAvailable === false}
             >
               {loading ? (
-                <ActivityIndicator size="small" color="#ffffff" />
+                <ActivityIndicator size="small" color={Colors.text.primary} />
               ) : (
                 <>
-                  <Icon name="save" size={20} color="#ffffff" />
+                  <Icon name="save" size={20} color={Colors.text.primary} />
                   <Text style={styles.saveButtonText}>Save Changes</Text>
                 </>
               )}
@@ -410,7 +411,7 @@ const ProfileSettingsScreen = ({ navigation }) => {
               style={styles.logoutButton}
               onPress={handleLogout}
             >
-              <Icon name="logout" size={20} color="#ef4444" />
+              <Icon name="logout" size={20} color={Colors.status.error} />
               <Text style={styles.logoutButtonText}>Sign Out</Text>
             </TouchableOpacity>
           </View>
@@ -459,28 +460,28 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 8,
   },
   inputWrapper: {
     position: 'relative',
   },
   input: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: Colors.border.light,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     paddingRight: 50,
     fontSize: 16,
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   inputError: {
-    borderColor: '#ef4444',
+    borderColor: Colors.status.error,
   },
   inputSuccess: {
-    borderColor: '#10b981',
+    borderColor: Colors.status.success,
   },
   inputIcon: {
     position: 'absolute',
@@ -491,19 +492,19 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '0deg' }],
   },
   errorText: {
-    color: '#ef4444',
+    color: Colors.status.error,
     fontSize: 14,
     marginTop: 4,
   },
   successText: {
-    color: '#10b981',
+    color: Colors.status.success,
     fontSize: 14,
     marginTop: 4,
   },
   dropdownContainer: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: Colors.border.light,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -513,7 +514,7 @@ const styles = StyleSheet.create({
   },
   dropdownValue: {
     fontSize: 16,
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   industryGrid: {
     flexDirection: 'row',
@@ -522,27 +523,27 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   industryOption: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: Colors.border.light,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   industryOptionSelected: {
-    backgroundColor: '#ff9500',
-    borderColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
+    borderColor: Colors.primary.main,
   },
   industryOptionText: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: Colors.text.muted,
   },
   industryOptionTextSelected: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontWeight: '600',
   },
   saveButton: {
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
     borderRadius: 12,
     paddingVertical: 16,
     flexDirection: 'row',
@@ -552,18 +553,18 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   saveButtonDisabled: {
-    backgroundColor: '#666',
+    backgroundColor: Colors.text.muted,
     opacity: 0.6,
   },
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   logoutButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#ef4444',
+    borderColor: Colors.status.error,
     borderRadius: 12,
     paddingVertical: 16,
     flexDirection: 'row',
@@ -575,7 +576,7 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ef4444',
+    color: Colors.status.error,
   },
 });
 

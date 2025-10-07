@@ -8,7 +8,7 @@ import { getApp } from '@react-native-firebase/app';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiRequest } from './src/utils/enhancedNetworkUtils';
+import { apiRequest, clearInMemoryAuthToken } from './src/utils/enhancedNetworkUtils';
 
 // Import screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -236,6 +236,35 @@ const App = () => {
   const [isCheckingProfile, setIsCheckingProfile] = useState(false);
   const [hasCompletedProfile, setHasCompletedProfile] = useState(null);
 
+  const clearStoredSession = async () => {
+    try {
+      console.log('🧹 Clearing stored authentication session');
+      await AsyncStorage.removeItem(AUTH_CONFIG.STORAGE_KEYS.USER_TOKEN);
+      await AsyncStorage.removeItem(AUTH_CONFIG.STORAGE_KEYS.CURRENT_USERNAME);
+
+      const keys = await AsyncStorage.getAllKeys();
+      const prefixesToClear = [
+        'user_data_',
+        'user_onboarding_',
+        'user_data_username_',
+        'user_onboarding_username_'
+      ];
+
+      const keysToRemove = keys.filter((key) =>
+        prefixesToClear.some((prefix) => key.startsWith(prefix))
+      );
+
+      if (keysToRemove.length) {
+        await AsyncStorage.multiRemove(keysToRemove);
+        console.log('🧹 Removed user-scoped keys:', keysToRemove);
+      }
+    } catch (error) {
+      console.error('❌ Error clearing stored session data:', error);
+    } finally {
+      clearInMemoryAuthToken();
+    }
+  };
+
   console.log('🔄 APP STATE:', {
     isLoading,
     user: user ? user.email : 'none',
@@ -258,12 +287,14 @@ const App = () => {
         console.log('✅ User authenticated, checking profile...');
         await checkUserProfile(firebaseUser);
       } else {
-        // User is logged out
+        // User is logged out - clear all stored auth data
         setUser(null);
         setHasCompletedProfile(null);
         setIsLoading(false);
         setIsCheckingProfile(false);
-        console.log('👋 User logged out - showing login screen');
+        console.log('👋 User logged out - clearing stored tokens');
+        await clearStoredSession();
+        console.log('📱 Showing login screen');
       }
     });
 
@@ -336,6 +367,17 @@ const App = () => {
         // Use backend's profileCompleted flag as primary check
         const shouldShowHome = userHasUsername && data.profileCompleted;
         setHasCompletedProfile(shouldShowHome);
+
+        if (shouldShowHome && data.user?.username) {
+          await AsyncStorage.setItem(
+            AUTH_CONFIG.STORAGE_KEYS.CURRENT_USERNAME,
+            data.user.username
+          );
+          console.log('💾 Stored current username for session:', data.user.username);
+        } else {
+          await AsyncStorage.removeItem(AUTH_CONFIG.STORAGE_KEYS.CURRENT_USERNAME);
+          console.log('🧹 Cleared current username from storage');
+        }
         
         console.log('🎯 FINAL DECISION:');
         console.log('  🔍 shouldShowHome:', shouldShowHome);
@@ -352,6 +394,7 @@ const App = () => {
         
         if (response.authError) {
           console.log('🔄 Invalid authentication token - signing out user');
+          await clearStoredSession();
           await auth(getApp()).signOut();
         } else {
           // On error, default to GetStarted page for safety (assume new user)

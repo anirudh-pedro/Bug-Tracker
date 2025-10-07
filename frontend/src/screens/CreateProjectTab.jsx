@@ -18,6 +18,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { apiRequest } from '../utils/networkUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
+import Colors from '../theme/colors';
 
 const {width: screenWidth} = Dimensions.get('window');
 

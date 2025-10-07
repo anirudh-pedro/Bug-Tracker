@@ -157,32 +157,51 @@ const LoginScreen = ({ navigation }) => {
         console.log('🔍 Is new user:', response.data.isNewUser);
         
         // Clear any existing token first to avoid conflicts
-        await AsyncStorage.removeItem('userToken');
-        console.log('🧹 Cleared old token from AsyncStorage');
+        await AsyncStorage.removeItem(AUTH_CONFIG.STORAGE_KEYS.USER_TOKEN);
+        await AsyncStorage.removeItem(AUTH_CONFIG.STORAGE_KEYS.CURRENT_USERNAME);
+        console.log('🧹 Cleared old token and username from AsyncStorage');
         
         // Store new token in AsyncStorage for future use
         if (response.data.token) {
-          await AsyncStorage.setItem('userToken', response.data.token);
+          await AsyncStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.USER_TOKEN, response.data.token);
           console.log('💾 New token stored in AsyncStorage');
           console.log('🎫 New token preview:', response.data.token.substring(0, 30) + '...');
         }
 
         // Store user data in AsyncStorage with both Firebase UID and backend user ID
         if (response.data.user) {
+          const backendUser = response.data.user;
+          const usernameKey = backendUser.username?.trim();
+
           const userData = {
             uid: userCredential.user.uid, // Firebase UID
-            id: response.data.user.id, // Backend user ID
-            username: response.data.user.username,
-            name: response.data.user.name,
-            email: response.data.user.email,
-            avatar: response.data.user.avatar,
-            industry: response.data.user.industry,
-            phoneNumber: response.data.user.phoneNumber,
-            role: response.data.user.role,
-            onboardingCompleted: response.data.user.hasCompletedOnboarding
+            id: backendUser.id, // Backend user ID
+            username: backendUser.username,
+            name: backendUser.name,
+            email: backendUser.email,
+            avatar: backendUser.avatar,
+            industry: backendUser.industry,
+            phoneNumber: backendUser.phoneNumber,
+            role: backendUser.role,
+            onboardingCompleted: backendUser.hasCompletedOnboarding
           };
+
+          const defaultUserDataKey = AUTH_CONFIG.STORAGE_KEYS.USER_DATA(userCredential.user.uid);
+          await AsyncStorage.setItem(defaultUserDataKey, JSON.stringify(userData));
+
+          if (usernameKey) {
+            const usernameScopedKey = AUTH_CONFIG.STORAGE_KEYS.USER_DATA_BY_USERNAME(usernameKey);
+            await AsyncStorage.setItem(usernameScopedKey, JSON.stringify(userData));
+            await AsyncStorage.setItem(
+              AUTH_CONFIG.STORAGE_KEYS.CURRENT_USERNAME,
+              usernameKey
+            );
+            console.log('💾 User data stored for username:', usernameKey);
+          } else {
+            await AsyncStorage.removeItem(AUTH_CONFIG.STORAGE_KEYS.CURRENT_USERNAME);
+            console.log('⚠️ User has no username yet - cleared current username');
+          }
           
-          await AsyncStorage.setItem(`user_data_${userCredential.user.uid}`, JSON.stringify(userData));
           console.log('💾 User data stored in AsyncStorage');
         }
         
@@ -1359,15 +1378,6 @@ const LoginScreen = ({ navigation }) => {
                 </>
               )}
             </TouchableOpacity>
-            
-            {/* Development Reset Button */}
-            <TouchableOpacity 
-              style={styles.devResetButton}
-              onPress={clearAuthForDevelopment}
-            >
-              <Icon name="refresh" size={16} color="#ff6b6b" />
-              <Text style={styles.devResetText}>Dev: Clear Auth</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </SafeAreaView>
@@ -2048,25 +2058,6 @@ const styles = StyleSheet.create({
   googleButtonText: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: '500',
-  },
-  devResetButton: {
-    backgroundColor: '#1a1a1a',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#ff6b6b',
-    gap: 8,
-    marginTop: 10,
-    opacity: 0.8,
-  },
-  devResetText: {
-    color: '#ff6b6b',
-    fontSize: 12,
     fontWeight: '500',
   },
 });

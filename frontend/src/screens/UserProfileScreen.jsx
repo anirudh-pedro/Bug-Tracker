@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { apiRequest } from '../utils/enhancedNetworkUtils';
+import Colors from '../theme/colors';
 
 const UserProfileScreen = ({ route, navigation }) => {
   console.log('UserProfileScreen received route.params:', route.params);
@@ -174,20 +175,20 @@ const UserProfileScreen = ({ route, navigation }) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <LinearGradient colors={['#667eea', '#764ba2']} style={styles.header}>
+        <LinearGradient colors={Colors.gradients.purple} style={styles.header}>
           <View style={styles.headerContent}>
             <TouchableOpacity 
               style={styles.backButton}
               onPress={() => navigation.goBack()}
             >
-              <Icon name="arrow-back" size={24} color="#FFF" />
+              <Icon name="arrow-back" size={24} color={Colors.text.primary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>User Profile</Text>
           </View>
         </LinearGradient>
         
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#667eea" />
+          <ActivityIndicator size="large" color={Colors.gradients.purple[0]} />
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
       </SafeAreaView>
@@ -197,20 +198,20 @@ const UserProfileScreen = ({ route, navigation }) => {
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
-        <LinearGradient colors={['#667eea', '#764ba2']} style={styles.header}>
+        <LinearGradient colors={Colors.gradients.purple} style={styles.header}>
           <View style={styles.headerContent}>
             <TouchableOpacity 
               style={styles.backButton}
               onPress={() => navigation.goBack()}
             >
-              <Icon name="arrow-back" size={24} color="#FFF" />
+              <Icon name="arrow-back" size={24} color={Colors.text.primary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>User Profile</Text>
           </View>
         </LinearGradient>
         
         <View style={styles.errorContainer}>
-          <Icon name="error" size={64} color="#E74C3C" />
+          <Icon name="error" size={64} color={Colors.status.error} />
           <Text style={styles.errorTitle}>Profile Error</Text>
           <Text style={styles.errorMessage}>{error}</Text>
           <TouchableOpacity 
@@ -227,20 +228,20 @@ const UserProfileScreen = ({ route, navigation }) => {
   if (!userProfile) {
     return (
       <SafeAreaView style={styles.container}>
-        <LinearGradient colors={['#667eea', '#764ba2']} style={styles.header}>
+        <LinearGradient colors={Colors.gradients.purple} style={styles.header}>
           <View style={styles.headerContent}>
             <TouchableOpacity 
               style={styles.backButton}
               onPress={() => navigation.goBack()}
             >
-              <Icon name="arrow-back" size={24} color="#FFF" />
+              <Icon name="arrow-back" size={24} color={Colors.text.primary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>User Profile</Text>
           </View>
         </LinearGradient>
         
         <View style={styles.errorContainer}>
-          <Icon name="person-off" size={80} color="#BDC3C7" />
+          <Icon name="person-off" size={80} color={Colors.text.tertiary} />
           <Text style={styles.errorText}>User profile not found</Text>
           <TouchableOpacity 
             style={styles.retryButton}
@@ -255,13 +256,13 @@ const UserProfileScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#667eea', '#764ba2']} style={styles.header}>
+      <LinearGradient colors={Colors.gradients.purple} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-back" size={24} color="#FFF" />
+            <Icon name="arrow-back" size={24} color={Colors.text.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{userProfile.name}</Text>
         </View>
@@ -318,25 +319,25 @@ const UserProfileScreen = ({ route, navigation }) => {
             <Text style={styles.sectionTitle}>Activity Statistics</Text>
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
-                <Icon name="star" size={24} color="#F39C12" />
+                <Icon name="star" size={24} color={Colors.status.warning} />
                 <Text style={styles.statNumber}>{userStats.totalPoints || 0}</Text>
                 <Text style={styles.statLabel}>Total Points</Text>
               </View>
               
               <View style={styles.statCard}>
-                <Icon name="bug-report" size={24} color="#E74C3C" />
+                <Icon name="bug-report" size={24} color={Colors.status.error} />
                 <Text style={styles.statNumber}>{userStats.bugsReported || 0}</Text>
                 <Text style={styles.statLabel}>Bugs Reported</Text>
               </View>
               
               <View style={styles.statCard}>
-                <Icon name="check-circle" size={24} color="#27AE60" />
+                <Icon name="check-circle" size={24} color={Colors.status.success} />
                 <Text style={styles.statNumber}>{userStats.bugsResolved || 0}</Text>
                 <Text style={styles.statLabel}>Bugs Resolved</Text>
               </View>
               
               <View style={styles.statCard}>
-                <Icon name="merge-type" size={24} color="#3498DB" />
+                <Icon name="merge-type" size={24} color={Colors.status.info} />
                 <Text style={styles.statNumber}>{userStats.pullRequests || 0}</Text>
                 <Text style={styles.statLabel}>Pull Requests</Text>
               </View>

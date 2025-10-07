@@ -14,6 +14,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { apiRequest } from '../utils/networkUtils';
 import auth from '@react-native-firebase/auth';
+import Colors from '../theme/colors';
 
 const {width: screenWidth} = Dimensions.get('window');
 

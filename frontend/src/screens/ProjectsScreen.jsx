@@ -421,7 +421,7 @@ const ProjectsScreen = ({navigation}) => {
                 onPress={() => setEditModalVisible(false)}
                 style={styles.closeButton}
               >
-                <Icon name="close" size={24} color="#ffffff" />
+                <Icon name="close" size={24} color={Colors.text.primary} />
               </TouchableOpacity>
             </View>
 
@@ -433,7 +433,7 @@ const ProjectsScreen = ({navigation}) => {
                   value={editedProjectName}
                   onChangeText={setEditedProjectName}
                   placeholder="Enter project name"
-                  placeholderTextColor="#666666"
+                  placeholderTextColor={Colors.text.muted}
                 />
               </View>
 
@@ -444,7 +444,7 @@ const ProjectsScreen = ({navigation}) => {
                   value={editedProjectDescription}
                   onChangeText={setEditedProjectDescription}
                   placeholder="Enter project description"
-                  placeholderTextColor="#666666"
+                  placeholderTextColor={Colors.text.muted}
                   multiline={true}
                   numberOfLines={4}
                 />
@@ -464,7 +464,7 @@ const ProjectsScreen = ({navigation}) => {
                   disabled={editLoading}
                 >
                   {editLoading ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
+                    <ActivityIndicator size="small" color={Colors.text.primary} />
                   ) : (
                     <Text style={styles.saveButtonText}>Save Changes</Text>
                   )}
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
   projectName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     flex: 1,
   },
   statusBadge: {
@@ -643,7 +643,7 @@ const styles = StyleSheet.create({
   },
   projectDescription: {
     fontSize: 13,
-    color: '#888888',
+    color: Colors.text.tertiary,
     lineHeight: 18,
     fontWeight: '400',
   },
@@ -658,17 +658,17 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 12,
-    color: '#888888',
+    color: Colors.text.tertiary,
     fontWeight: '500',
   },
   progressPercent: {
     fontSize: 12,
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontWeight: '600',
   },
   progressBar: {
     height: 6,
-    backgroundColor: '#222222',
+    backgroundColor: Colors.border.light,
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -699,13 +699,13 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateText: {
     fontSize: 13,
-    color: '#666666',
+    color: Colors.text.muted,
     textAlign: 'center',
   },
   loadingContainer: {
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666666',
+    color: Colors.text.muted,
     marginTop: 16,
   },
   emptyContainer: {
@@ -729,19 +729,19 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#666666',
+    color: Colors.text.muted,
     textAlign: 'center',
     lineHeight: 20,
   },
   createFirstButton: {
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -753,7 +753,7 @@ const styles = StyleSheet.create({
   createFirstButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   
   // New styles for edit/delete functionality
@@ -767,22 +767,22 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#333333',
+    borderTopColor: Colors.border.light,
     marginTop: 12,
   },
   editButton: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     padding: 8,
     borderWidth: 1,
-    borderColor: '#667eea',
+    borderColor: Colors.status.info,
   },
   deleteButton: {
-    backgroundColor: '#2d1b1b',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 8,
     padding: 8,
     borderWidth: 1,
-    borderColor: '#ff6b6b',
+    borderColor: Colors.status.error,
   },
   
   // Modal styles
@@ -793,7 +793,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContainer: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 16,
     width: '90%',
     maxWidth: 400,
@@ -805,12 +805,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: Colors.border.light,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   closeButton: {
     padding: 4,
@@ -824,17 +824,17 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 8,
   },
   modalTextInput: {
-    backgroundColor: '#333333',
+    backgroundColor: Colors.border.light,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#ffffff',
+    color: Colors.text.primary,
     borderWidth: 1,
-    borderColor: '#444444',
+    borderColor: Colors.border.dark,
   },
   textArea: {
     height: 100,
@@ -848,7 +848,7 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#333333',
+    backgroundColor: Colors.border.light,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -856,11 +856,11 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -868,7 +868,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   disabledButton: {
     opacity: 0.6,

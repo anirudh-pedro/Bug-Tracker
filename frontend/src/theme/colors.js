@@ -47,15 +47,16 @@ export const Colors = {
 
   // Status Colors
   status: {
-    open: '#E74C3C',          // Red for open issues
-    inProgress: '#ff9500',    // Orange for in-progress
-    resolved: '#27AE60',      // Green for resolved
+    open: '#ff4444',          // Red for open issues (error)
+    inProgress: '#f59e0b',    // Amber for in-progress (warning)
+    resolved: '#10b981',      // Emerald for resolved (success)
     closed: '#95A5A6',        // Gray for closed
     default: '#666666',       // Default gray
-    success: '#27AE60',       // Green for success states
-    warning: '#F39C12',       // Yellow-orange for warnings
-    danger: '#E74C3C',        // Red for danger/errors
-    info: '#3498DB'           // Blue for information
+    success: '#10b981',       // Emerald/Green for success states
+    warning: '#f59e0b',       // Amber for warnings
+    danger: '#ff4444',        // Red for danger/errors
+    error: '#ff4444',         // Red for errors
+    info: '#3b82f6'           // Blue for information
   },
 
   // Project Status Colors (reusing status/accent palette)
@@ -94,7 +95,11 @@ export const Colors = {
 
   // Gradient Colors
   gradients: {
-    primary: ['#ff9500', '#e6850e'],           // Orange gradient
+    primary: ['#ff9500', '#e6850e'],           // Orange gradient (Amber)
+    amber: ['#f59e0b', '#d97706'],             // Amber gradient (Bugs Reported)
+    emerald: ['#10b981', '#059669'],           // Emerald gradient (Success)
+    blue: ['#3b82f6', '#2563eb'],              // Blue gradient (Info/Projects)
+    purple: ['#667eea', '#764ba2'],            // Purple gradient (User Profile)
     dark: ['#1a1a1a', '#2a2a2a'],             // Dark gradient
     header: ['#2E3A59', '#1a1a1a'],           // Header gradient
     card: ['#1a1a1a', '#222222'],             // Card gradient

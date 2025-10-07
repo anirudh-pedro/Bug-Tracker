@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,11 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiRequest } from '../utils/networkUtils';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Colors from '../theme/colors';
+import { AUTH_CONFIG } from '../config/authConfig';
 
 const CreateProjectScreen = ({ navigation, route }) => {
   const [projectName, setProjectName] = useState('');
@@ -24,21 +27,50 @@ const CreateProjectScreen = ({ navigation, route }) => {
   const [techStack, setTechStack] = useState('');
   const [techStackList, setTechStackList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [currentUsername, setCurrentUsername] = useState('');
   const techStackInputRef = useRef(null);
   const insets = useSafeAreaInsets();
   
   // Get callback from route params
   const onProjectCreated = route?.params?.onProjectCreated;
 
-  const generateProjectKey = (name) => {
-    // Generate a project key from the name
-    return name
-      .toUpperCase()
-      .replace(/[^A-Z0-9\s]/g, '')
-      .split(' ')
-      .map(word => word.slice(0, 3))
-      .join('')
-      .slice(0, 10);
+  useEffect(() => {
+    const loadUsername = async () => {
+      try {
+        const storedUsername = await AsyncStorage.getItem(
+          AUTH_CONFIG.STORAGE_KEYS.CURRENT_USERNAME
+        );
+
+        if (storedUsername) {
+          setCurrentUsername(storedUsername);
+          console.log('👤 Loaded current username for project key:', storedUsername);
+        }
+      } catch (error) {
+        console.error('❌ Failed to load current username:', error);
+      }
+    };
+
+    loadUsername();
+  }, []);
+
+  const generateProjectKey = (name, usernameOverride = currentUsername) => {
+    const sanitize = (value) => value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const usernameSegment = usernameOverride ? sanitize(usernameOverride).slice(0, 3) : '';
+
+    const rawNameSegment = sanitize(
+      name
+        .split(' ')
+        .map((word) => word.slice(0, 2))
+        .join('')
+    );
+
+    const availableLength = Math.max(2, 8 - usernameSegment.length);
+    const nameSegment = rawNameSegment.slice(0, availableLength);
+
+    const randomSuffix = Math.floor(10 + Math.random() * 90); // two digits ensures <= 10 chars
+    const combinedKey = `${usernameSegment}${nameSegment}${randomSuffix}`;
+
+    return combinedKey.slice(0, 10);
   };
 
   const addTechStack = () => {
@@ -81,7 +113,19 @@ const CreateProjectScreen = ({ navigation, route }) => {
 
     setLoading(true);
     try {
-      const projectKey = generateProjectKey(projectName);
+      let usernameForKey = currentUsername;
+
+      if (!usernameForKey) {
+        const storedUsername = await AsyncStorage.getItem(
+          AUTH_CONFIG.STORAGE_KEYS.CURRENT_USERNAME
+        );
+        if (storedUsername) {
+          setCurrentUsername(storedUsername);
+          usernameForKey = storedUsername;
+        }
+      }
+
+      const projectKey = generateProjectKey(projectName, usernameForKey);
       
       const response = await apiRequest('/api/projects', {
         method: 'POST',
@@ -89,6 +133,7 @@ const CreateProjectScreen = ({ navigation, route }) => {
           name: projectName.trim(),
           description: projectDescription.trim(),
           key: projectKey,
+          ownerUsername: usernameForKey || undefined,
           tags: techStackList,
           category: 'web', // Default category
           priority: 'medium' // Default priority
@@ -139,7 +184,7 @@ const CreateProjectScreen = ({ navigation, route }) => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <LinearGradient
-          colors={['#1a1a1a', '#000000']}
+          colors={[Colors.background.secondary, Colors.background.primary]}
           style={styles.gradient}
         >
           {/* Header */}
@@ -148,7 +193,7 @@ const CreateProjectScreen = ({ navigation, route }) => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-back" size={24} color="#ffffff" />
+            <Icon name="arrow-back" size={24} color={Colors.text.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Create Project</Text>
           <View style={styles.headerSpacer} />
@@ -163,10 +208,10 @@ const CreateProjectScreen = ({ navigation, route }) => {
           {/* Project Icon */}
           <View style={styles.iconContainer}>
             <LinearGradient
-              colors={['#ff6b6b', '#ff5252']}
+              colors={Colors.gradients.amber}
               style={styles.iconGradient}
             >
-              <Icon name="rocket-launch" size={40} color="#ffffff" />
+              <Icon name="rocket-launch" size={40} color={Colors.text.primary} />
             </LinearGradient>
           </View>
 
@@ -183,7 +228,7 @@ const CreateProjectScreen = ({ navigation, route }) => {
               <TextInput
                 style={styles.input}
                 placeholder="Enter your project name"
-                placeholderTextColor="#666666"
+                placeholderTextColor={Colors.text.muted}
                 value={projectName}
                 onChangeText={setProjectName}
                 maxLength={100}
@@ -198,7 +243,7 @@ const CreateProjectScreen = ({ navigation, route }) => {
                   ref={techStackInputRef}
                   style={styles.techStackInput}
                   placeholder="Add a technology (e.g., React Native)"
-                  placeholderTextColor="#666666"
+                  placeholderTextColor={Colors.text.muted}
                   value={techStack}
                   onChangeText={setTechStack}
                   onSubmitEditing={handleTechStackSubmit}
@@ -211,7 +256,7 @@ const CreateProjectScreen = ({ navigation, route }) => {
                   disabled={!techStack.trim()}
                   activeOpacity={0.7}
                 >
-                  <Icon name="add" size={20} color={techStack.trim() ? "#ffffff" : "#666666"} />
+                  <Icon name="add" size={20} color={techStack.trim() ? Colors.text.primary : Colors.text.muted} />
                 </TouchableOpacity>
               </View>
               
@@ -225,7 +270,7 @@ const CreateProjectScreen = ({ navigation, route }) => {
                         style={styles.removeButton}
                         onPress={() => removeTechStack(index)}
                       >
-                        <Icon name="close" size={16} color="#ff6b6b" />
+                        <Icon name="close" size={16} color={Colors.status.error} />
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -246,7 +291,7 @@ const CreateProjectScreen = ({ navigation, route }) => {
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="Describe what your project is about..."
-                placeholderTextColor="#666666"
+                placeholderTextColor={Colors.text.muted}
                 value={projectDescription}
                 onChangeText={setProjectDescription}
                 multiline={true}
@@ -267,14 +312,14 @@ const CreateProjectScreen = ({ navigation, route }) => {
             disabled={loading}
           >
             <LinearGradient
-              colors={loading ? ['#666666', '#555555'] : ['#ff6b6b', '#ff5252']}
+              colors={loading ? [Colors.text.muted, Colors.text.tertiary] : Colors.gradients.amber}
               style={styles.createButtonGradient}
             >
               {loading ? (
-                <ActivityIndicator size="small" color="#ffffff" />
+                <ActivityIndicator size="small" color={Colors.text.primary} />
               ) : (
                 <>
-                  <Icon name="add" size={20} color="#ffffff" />
+                  <Icon name="add" size={20} color={Colors.text.primary} />
                   <Text style={styles.createButtonText}>Create Project</Text>
                 </>
               )}
@@ -290,7 +335,7 @@ const CreateProjectScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background.primary,
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -304,20 +349,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: Colors.border.light,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#333333',
+    backgroundColor: Colors.border.light,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginLeft: 15,
   },
   headerSpacer: {
@@ -342,7 +387,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 5,
-    shadowColor: '#ff6b6b',
+    shadowColor: Colors.gradients.amber[0],
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -350,13 +395,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: Colors.text.primary,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#888888',
+    color: Colors.text.tertiary,
     textAlign: 'center',
     marginBottom: 40,
     lineHeight: 22,
@@ -370,18 +415,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#ffffff',
+    color: Colors.text.primary,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: Colors.border.light,
   },
   textArea: {
     height: 100,
@@ -389,12 +434,12 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 12,
-    color: '#666666',
+    color: Colors.text.muted,
     marginTop: 5,
   },
   charCount: {
     fontSize: 12,
-    color: '#666666',
+    color: Colors.text.muted,
     textAlign: 'right',
     marginTop: 5,
   },
@@ -404,7 +449,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     elevation: 5,
-    shadowColor: '#ff6b6b',
+    shadowColor: Colors.gradients.amber[0],
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -424,7 +469,7 @@ const styles = StyleSheet.create({
   createButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   // Tech Stack Styles
   techStackInputContainer: {
@@ -434,26 +479,26 @@ const styles = StyleSheet.create({
   },
   techStackInput: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#ffffff',
+    color: Colors.text.primary,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: Colors.border.light,
   },
   addButton: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#333333',
+    backgroundColor: Colors.border.light,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#444444',
+    borderColor: Colors.border.dark,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: Colors.background.primary,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.3,
     shadowRadius: 2,
@@ -467,23 +512,23 @@ const styles = StyleSheet.create({
   techStackItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.background.card,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#444444',
+    borderColor: Colors.border.dark,
   },
   techStackText: {
     fontSize: 14,
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginRight: 6,
   },
   removeButton: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#333333',
+    backgroundColor: Colors.border.light,
     alignItems: 'center',
     justifyContent: 'center',
   },

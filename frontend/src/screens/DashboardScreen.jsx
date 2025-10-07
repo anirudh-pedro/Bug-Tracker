@@ -222,7 +222,7 @@ const DashboardScreen = () => {
       
       <View style={styles.bugFooter}>
         <View style={styles.bugProject}>
-          <Icon name="folder" size={14} color="#888888" />
+          <Icon name="folder" size={14} color={Colors.text.tertiary} />
           <Text style={styles.projectText}>{item.project}</Text>
         </View>
         <View style={[styles.statusBadge, {borderColor: getStatusColor(item.status)}]}>
@@ -254,17 +254,17 @@ const DashboardScreen = () => {
         {/* Search and Filter Bar */}
         <View style={styles.searchFilterContainer}>
           <View style={styles.searchContainer}>
-            <Icon name="search" size={20} color="#666666" />
+            <Icon name="search" size={20} color={Colors.text.muted} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search bugs, users, projects..."
-              placeholderTextColor="#666666"
+              placeholderTextColor={Colors.text.muted}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Icon name="clear" size={20} color="#666666" />
+                <Icon name="clear" size={20} color={Colors.text.muted} />
               </TouchableOpacity>
             )}
           </View>
@@ -272,7 +272,7 @@ const DashboardScreen = () => {
             style={styles.filterButton}
             onPress={() => setShowFilterModal(true)}
           >
-            <Icon name="tune" size={20} color="#ff9500" />
+            <Icon name="tune" size={20} color={Colors.primary.main} />
           </TouchableOpacity>
         </View>
 
@@ -284,7 +284,7 @@ const DashboardScreen = () => {
                 <View style={styles.activeFilter}>
                   <Text style={styles.activeFilterText}>Status: {selectedFilter}</Text>
                   <TouchableOpacity onPress={() => setSelectedFilter('All')}>
-                    <Icon name="close" size={16} color="#ff9500" />
+                    <Icon name="close" size={16} color={Colors.primary.main} />
                   </TouchableOpacity>
                 </View>
               )}
@@ -292,7 +292,7 @@ const DashboardScreen = () => {
                 <View style={styles.activeFilter}>
                   <Text style={styles.activeFilterText}>Priority: {selectedPriority}</Text>
                   <TouchableOpacity onPress={() => setSelectedPriority('All')}>
-                    <Icon name="close" size={16} color="#ff9500" />
+                    <Icon name="close" size={16} color={Colors.primary.main} />
                   </TouchableOpacity>
                 </View>
               )}
@@ -300,7 +300,7 @@ const DashboardScreen = () => {
                 <View style={styles.activeFilter}>
                   <Text style={styles.activeFilterText}>Project: {selectedProject}</Text>
                   <TouchableOpacity onPress={() => setSelectedProject('All')}>
-                    <Icon name="close" size={16} color="#ff9500" />
+                    <Icon name="close" size={16} color={Colors.primary.main} />
                   </TouchableOpacity>
                 </View>
               )}
@@ -316,7 +316,7 @@ const DashboardScreen = () => {
           {stats.map((stat) => (
             <TouchableOpacity key={stat.id} style={styles.statCard}>
               <View style={[styles.statIcon, {backgroundColor: stat.color}]}>
-                <Icon name={stat.icon} size={20} color="#ffffff" />
+                <Icon name={stat.icon} size={20} color={Colors.text.primary} />
               </View>
               <Text style={styles.statCount}>{stat.count}</Text>
               <Text style={styles.statTitle}>{stat.title}</Text>
@@ -336,8 +336,8 @@ const DashboardScreen = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#ff9500"
-              colors={['#ff9500']}
+              tintColor={Colors.primary.main}
+              colors={[Colors.primary.main]}
             />
           }
           // Performance optimizations
@@ -360,7 +360,7 @@ const DashboardScreen = () => {
               <View style={styles.filterModalHeader}>
                 <Text style={styles.filterModalTitle}>Filter Bugs</Text>
                 <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-                  <Icon name="close" size={24} color="#ffffff" />
+                  <Icon name="close" size={24} color={Colors.text.primary} />
                 </TouchableOpacity>
               </View>
 
@@ -461,7 +461,7 @@ const DashboardScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.background.primary,
   },
   safeArea: {
     flex: 1,
@@ -474,12 +474,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#888888',
+    color: Colors.text.tertiary,
     fontWeight: '500',
   },
   searchFilterContainer: {
@@ -492,29 +492,29 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111111',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: Colors.border.light,
     gap: 12,
   },
   searchInput: {
     flex: 1,
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 14,
     fontWeight: '400',
   },
   filterButton: {
     width: 48,
     height: 48,
-    backgroundColor: '#111111',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: Colors.border.light,
   },
   activeFiltersContainer: {
     paddingHorizontal: 20,
@@ -523,28 +523,28 @@ const styles = StyleSheet.create({
   activeFilter: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ff950020',
+    backgroundColor: Colors.primary.light,
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#ff9500',
+    borderColor: Colors.primary.main,
     gap: 6,
   },
   activeFilterText: {
-    color: '#ff9500',
+    color: Colors.primary.main,
     fontSize: 12,
     fontWeight: '500',
   },
   clearAllFilters: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#333333',
+    backgroundColor: Colors.border.light,
     borderRadius: 16,
   },
   clearAllText: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 12,
     fontWeight: '500',
   },
@@ -556,13 +556,13 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#111111',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
     marginHorizontal: 4,
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: Colors.border.light,
   },
   statIcon: {
     width: 32,
@@ -575,12 +575,12 @@ const styles = StyleSheet.create({
   statCount: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 2,
   },
   statTitle: {
     fontSize: 10,
-    color: '#888888',
+    color: Colors.text.tertiary,
     textAlign: 'center',
     fontWeight: '500',
   },
@@ -592,12 +592,12 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   bugCard: {
-    backgroundColor: '#111111',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#222222',
+    borderColor: Colors.border.light,
   },
   bugHeader: {
     flexDirection: 'row',
@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
   bugTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 8,
     lineHeight: 22,
   },
@@ -629,23 +629,23 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   userName: {
     fontSize: 12,
-    color: '#888888',
+    color: Colors.text.tertiary,
     fontWeight: '500',
   },
   timeAgo: {
     fontSize: 12,
-    color: '#666666',
+    color: Colors.text.muted,
   },
   bugHeaderRight: {
     alignItems: 'flex-end',
@@ -658,11 +658,11 @@ const styles = StyleSheet.create({
   priorityText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   bugDescription: {
     fontSize: 14,
-    color: '#cccccc',
+    color: Colors.text.secondary,
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -680,7 +680,7 @@ const styles = StyleSheet.create({
   },
   projectText: {
     fontSize: 12,
-    color: '#888888',
+    color: Colors.text.tertiary,
     fontWeight: '500',
   },
   statusBadge: {
@@ -699,14 +699,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   tag: {
-    backgroundColor: '#222222',
+    backgroundColor: Colors.border.light,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
   },
   tagText: {
     fontSize: 10,
-    color: '#888888',
+    color: Colors.text.tertiary,
     fontWeight: '500',
   },
   modalOverlay: {
@@ -715,12 +715,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   filterModal: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: Colors.border.light,
   },
   filterModalHeader: {
     flexDirection: 'row',
@@ -728,12 +728,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: Colors.border.light,
   },
   filterModalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#ffffff',
+    color: Colors.text.primary,
   },
   filterModalContent: {
     flex: 1,
@@ -745,7 +745,7 @@ const styles = StyleSheet.create({
   filterSectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: Colors.text.primary,
     marginBottom: 12,
   },
   filterOptions: {
@@ -757,21 +757,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
-    backgroundColor: '#222222',
+    backgroundColor: Colors.border.light,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: Colors.border.light,
   },
   filterOptionSelected: {
-    backgroundColor: '#ff9500',
-    borderColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
+    borderColor: Colors.primary.main,
   },
   filterOptionText: {
     fontSize: 14,
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontWeight: '500',
   },
   filterOptionTextSelected: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontWeight: '600',
   },
   filterModalFooter: {
@@ -779,17 +779,17 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: '#333333',
+    borderTopColor: Colors.border.light,
   },
   resetButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#333333',
+    backgroundColor: Colors.border.light,
     alignItems: 'center',
   },
   resetButtonText: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -797,11 +797,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
     alignItems: 'center',
   },
   applyButtonText: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontSize: 16,
     fontWeight: '700',
   },

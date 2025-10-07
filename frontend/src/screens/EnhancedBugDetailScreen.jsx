@@ -1144,14 +1144,14 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
             <View style={styles.attachmentGrid}>
               {bug.attachments.map((attachment, index) => (
                 <View key={index} style={styles.attachmentCard}>
-                  <Icon name="insert-drive-file" size={24} color="#4ECDC4" />
+                  <Icon name="insert-drive-file" size={24} color={Colors.status.info} />
                   <View style={styles.attachmentInfo}>
                     <Text style={styles.attachmentName}>{attachment.name}</Text>
                     <Text style={styles.attachmentSize}>
                       {attachment.size ? `${(attachment.size / 1024).toFixed(1)} KB` : 'Unknown size'}
                     </Text>
                   </View>
-                  <Icon name="download" size={20} color="#ff9500" />
+                  <Icon name="download" size={20} color={Colors.primary.main} />
                 </View>
               ))}
             </View>
@@ -1161,14 +1161,14 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
         {/* Comments Section */}
         <View style={styles.enhancedSection}>
           <View style={styles.sectionHeaderWithIcon}>
-            <Icon name="comment" size={20} color="#ff9500" />
+            <Icon name="comment" size={20} color={Colors.primary.main} />
             <Text style={styles.enhancedSectionTitle}>Comments ({bug.comments?.length || 0})</Text>
             <View style={styles.spacer} />
             <TouchableOpacity 
               style={styles.addCommentButton}
               onPress={() => setShowCommentModal(true)}
             >
-              <Icon name="add" size={16} color="#000" />
+              <Icon name="add" size={16} color={Colors.background.primary} />
               <Text style={styles.addCommentText}>Add Comment</Text>
             </TouchableOpacity>
           </View>
@@ -1187,13 +1187,13 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
                   Replying to @{replyingTo.author?.name || 'User'}
                 </Text>
                 <TouchableOpacity onPress={cancelReply}>
-                  <Icon name="close" size={20} color="#888888" />
+                  <Icon name="close" size={20} color={Colors.text.tertiary} />
                 </TouchableOpacity>
               </View>
               <TextInput
                 style={styles.replyInput}
                 placeholder="Write your reply..."
-                placeholderTextColor="#888888"
+                placeholderTextColor={Colors.text.tertiary}
                 multiline
                 value={replyText}
                 onChangeText={setReplyText}
@@ -1291,7 +1291,7 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
                       style={styles.suggestionItem}
                       onPress={() => selectUserMention(user)}
                     >
-                      <Icon name="person" size={16} color="#666" />
+                      <Icon name="person" size={16} color={Colors.text.muted} />
                       <Text style={styles.suggestionText}>@{user.name}</Text>
                       {user.githubProfile?.username && (
                         <Text style={styles.suggestionGithub}>({user.githubProfile.username})</Text>
@@ -1605,18 +1605,18 @@ const styles = StyleSheet.create({
   pointsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2E3A59',
+    color: Colors.text.primary,
     marginLeft: 8,
   },
   pointsText: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: Colors.text.primary,
     marginBottom: 8,
   },
   awardButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -1624,13 +1624,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   awardButtonText: {
-    color: '#FFF',
+    color: Colors.text.primary,
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
   },
   githubSection: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     padding: 16,
     marginBottom: 8,
   },
@@ -1642,36 +1642,36 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: Colors.text.primary,
     marginLeft: 8,
   },
   repoInfo: {
     padding: 12,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.background.card,
     borderRadius: 8,
     marginBottom: 16,
   },
   repoUrl: {
     fontSize: 14,
-    color: '#CCCCCC',
+    color: Colors.text.secondary,
     marginBottom: 8,
   },
   openRepoText: {
     fontSize: 14,
-    color: '#3498DB',
+    color: Colors.status.info,
     fontWeight: '600',
   },
   linkRepoButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
     alignSelf: 'flex-start',
   },
   linkRepoText: {
-    color: '#FFF',
+    color: Colors.text.primary,
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
@@ -1681,9 +1681,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E1E8ED',
+    borderTopColor: Colors.border.light,
     borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
+    borderBottomColor: Colors.border.light,
     marginVertical: 16,
   },
   statItem: {
@@ -1691,7 +1691,7 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 12,
-    color: '#666',
+    color: Colors.text.muted,
     marginTop: 4,
   },
   actionButtons: {
@@ -1701,26 +1701,26 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#27AE60',
+    backgroundColor: Colors.status.success,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
     flex: 0.48,
   },
   actionButtonText: {
-    color: '#FFF',
+    color: Colors.text.primary,
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
   },
   prSection: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.background.secondary,
     padding: 16,
     marginBottom: 8,
   },
   prItem: {
     padding: 12,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.background.card,
     borderRadius: 8,
     marginBottom: 12,
   },
@@ -1733,7 +1733,7 @@ const styles = StyleSheet.create({
   prTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: Colors.text.primary,
     flex: 1,
   },
   prStatus: {
@@ -1742,18 +1742,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   prStatusText: {
-    color: '#FFF',
+    color: Colors.text.primary,
     fontSize: 10,
     fontWeight: '600',
   },
   prAuthor: {
     fontSize: 12,
-    color: '#CCCCCC',
+    color: Colors.text.secondary,
     marginBottom: 4,
   },
   prLink: {
     fontSize: 12,
-    color: '#3498DB',
+    color: Colors.status.info,
     fontWeight: '600',
   },
   section: {
@@ -1780,22 +1780,22 @@ const styles = StyleSheet.create({
   addCommentButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ff9500',
+    backgroundColor: Colors.primary.main,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#ff9500',
+    borderColor: Colors.primary.main,
   },
   addCommentText: {
-    color: '#000',
+    color: Colors.background.primary,
     fontSize: 12,
     fontWeight: '600',
     marginLeft: 4,
   },
   commentItem: {
     padding: 12,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: Colors.background.card,
     borderRadius: 8,
     marginBottom: 12,
   },

@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { apiRequest } from '../utils/enhancedNetworkUtils';
+import Colors from '../theme/colors';
 
 const { width, height } = Dimensions.get('window');
 
@@ -314,7 +315,7 @@ const OnboardingScreen = ({ route, navigation }) => {
   };
 
   return (
-    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
+    <LinearGradient colors={Colors.gradients.purple} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -425,7 +426,7 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: Colors.text.primary,
     textAlign: 'center',
   },
   subtitle: {
@@ -466,7 +467,7 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: Colors.text.primary,
     textAlign: 'center',
   },
   stepSubtitle: {
@@ -477,7 +478,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: Colors.background.secondary,
     borderRadius: 20,
     padding: 20,
     marginBottom: 20,
@@ -489,10 +490,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: Colors.border.light,
     borderRadius: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Colors.background.card,
     marginBottom: 12,
   },
   inputIcon: {
@@ -502,32 +503,32 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     fontSize: 16,
-    color: '#333',
+    color: Colors.text.primary,
   },
   errorInput: {
-    borderColor: '#F44336',
+    borderColor: Colors.status.error,
   },
   successInput: {
-    borderColor: '#4CAF50',
+    borderColor: Colors.status.success,
   },
   checkingIcon: {
     marginLeft: 8,
   },
   helperText: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.text.muted,
     textAlign: 'center',
     lineHeight: 20,
   },
   errorText: {
     fontSize: 14,
-    color: '#F44336',
+    color: Colors.status.error,
     textAlign: 'center',
     marginTop: 8,
   },
   successText: {
     fontSize: 14,
-    color: '#4CAF50',
+    color: Colors.status.success,
     textAlign: 'center',
     marginTop: 8,
   },
@@ -540,21 +541,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: Colors.border.light,
     borderRadius: 12,
     marginBottom: 8,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Colors.background.card,
   },
   selectedIndustry: {
-    backgroundColor: '#4ecdc4',
-    borderColor: '#4ecdc4',
+    backgroundColor: Colors.primary.main,
+    borderColor: Colors.primary.main,
   },
   industryText: {
     fontSize: 16,
-    color: '#333',
+    color: Colors.text.primary,
   },
   selectedIndustryText: {
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontWeight: '600',
   },
   buttonContainer: {
@@ -573,7 +574,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 16,
-    color: '#667eea',
+    color: Colors.gradients.purple[0],
     marginLeft: 8,
     fontWeight: '600',
   },
@@ -583,21 +584,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 25,
-    backgroundColor: '#4ecdc4',
+    backgroundColor: Colors.primary.main,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: Colors.background.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
   nextButtonText: {
     fontSize: 16,
-    color: '#ffffff',
+    color: Colors.text.primary,
     fontWeight: '600',
     marginRight: 8,
   },
   disabledButton: {
-    backgroundColor: '#cccccc',
+    backgroundColor: Colors.text.muted,
   },
 });
 
