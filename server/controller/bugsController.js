@@ -232,7 +232,33 @@ const createBug = async (req, res) => {
       ));
     }
 
-    const { title, description, priority = 'medium', projectId, bountyPoints = 0 } = req.body;
+    const {
+      title,
+      description,
+      priority = 'medium',
+      projectId,
+      bountyPoints = 0,
+      stepsToReproduce,
+      expectedBehavior,
+      actualBehavior,
+      environment,
+      category = 'bug',
+      repositoryUrl,
+      githubRepo,
+      severity = 'minor',
+      tags = [],
+      attachments = []
+    } = req.body;
+
+    const normalizedRepositoryUrl = repositoryUrl?.trim();
+
+    if (!normalizedRepositoryUrl) {
+      return res.status(400).json(createErrorResponse(
+        'Repository URL is required',
+        null,
+        400
+      ));
+    }
 
     // Validate project if provided
     if (projectId) {
@@ -247,18 +273,121 @@ const createBug = async (req, res) => {
     }
 
     // Create bug
+    const allowedSeverities = ['trivial', 'minor', 'major', 'critical', 'blocker'];
+    const allowedCategories = ['bug', 'feature', 'improvement', 'task', 'story'];
+
+    const normalizedPriority = (priority || 'medium').toLowerCase();
+    const normalizedSeverity = allowedSeverities.includes((severity || '').toLowerCase())
+      ? severity.toLowerCase()
+      : 'minor';
+    const normalizedCategory = allowedCategories.includes((category || '').toLowerCase())
+      ? category.toLowerCase()
+      : 'bug';
+
     const bugData = {
       title: title.trim(),
       description: description.trim(),
-      priority,
+      priority: normalizedPriority,
       reportedBy: req.user.id,
       bountyPoints: Number(bountyPoints),
-      status: 'open'
+      status: 'open',
+      severity: normalizedSeverity,
+      category: normalizedCategory
     };
 
     if (projectId) {
       bugData.project = projectId;
     }
+
+    if (expectedBehavior?.trim()) {
+      bugData.expectedResult = expectedBehavior.trim();
+    }
+
+    if (actualBehavior?.trim()) {
+      bugData.actualResult = actualBehavior.trim();
+    }
+
+    if (stepsToReproduce) {
+      let stepsArray = [];
+
+      if (Array.isArray(stepsToReproduce)) {
+        stepsArray = stepsToReproduce
+          .map((step, index) => {
+            if (!step) return null;
+            const value = typeof step === 'string' ? step.trim() : step.step?.trim();
+            if (!value) return null;
+            return {
+              step: value,
+              order: typeof step === 'object' && typeof step.order === 'number' ? step.order : index + 1
+            };
+          })
+          .filter(Boolean);
+      } else if (typeof stepsToReproduce === 'string') {
+        stepsArray = stepsToReproduce
+          .split(/\r?\n/)
+          .map(line => line.trim())
+          .filter(Boolean)
+          .map((step, index) => ({ step, order: index + 1 }));
+      }
+
+      if (stepsArray.length > 0) {
+        bugData.stepsToReproduce = stepsArray;
+      }
+    }
+
+    if (environment) {
+      if (typeof environment === 'string') {
+        const envString = environment.trim();
+        if (envString) {
+          bugData.environment = { device: envString };
+        }
+      } else if (typeof environment === 'object') {
+        const { os, browser, version, device, raw } = environment;
+        const cleanedEnvironment = {};
+        if (os) cleanedEnvironment.os = os;
+        if (browser) cleanedEnvironment.browser = browser;
+        if (version) cleanedEnvironment.version = version;
+        if (device) cleanedEnvironment.device = device;
+        if (raw && !cleanedEnvironment.device) cleanedEnvironment.device = raw;
+
+        if (Object.keys(cleanedEnvironment).length > 0) {
+          bugData.environment = cleanedEnvironment;
+        }
+      }
+    }
+
+    if (Array.isArray(tags) && tags.length > 0) {
+      bugData.tags = tags.filter(tag => typeof tag === 'string' && tag.trim()).map(tag => tag.trim());
+    }
+
+    if (Array.isArray(attachments) && attachments.length > 0) {
+      bugData.attachments = attachments.map((attachment) => ({
+        filename: attachment.name || attachment.filename || 'attachment',
+        url: attachment.url || '',
+        type: attachment.type || attachment.mimeType || '',
+        size: Number(attachment.size || 0)
+      }));
+    }
+
+    let repoOwner = githubRepo?.owner;
+    let repoName = githubRepo?.name;
+
+    if ((!repoOwner || !repoName) && normalizedRepositoryUrl) {
+      const segments = normalizedRepositoryUrl.split('/').filter(Boolean);
+      repoOwner = repoOwner || segments[segments.length - 2] || '';
+      repoName = repoName || segments[segments.length - 1] || '';
+    }
+
+    if (repoName) {
+      repoName = repoName.replace(/\.git$/i, '');
+    }
+
+    bugData.githubRepo = {
+      url: normalizedRepositoryUrl,
+      owner: repoOwner || '',
+      name: repoName || '',
+      isPublic: githubRepo?.isPublic !== undefined ? Boolean(githubRepo.isPublic) : true
+    };
 
     const bug = await Bug.create(bugData);
 

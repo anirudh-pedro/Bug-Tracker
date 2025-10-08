@@ -64,6 +64,19 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
   const [expandedComments, setExpandedComments] = useState(new Set());
   const [replyText, setReplyText] = useState('');
 
+  const formatLabel = (value) => {
+    if (!value) {
+      return '';
+    }
+
+    return value
+      .toString()
+      .split(/[_\-\s]+/)
+      .filter(Boolean)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  };
+
   useEffect(() => {
     loadBugDetails();
     loadCurrentUser();
@@ -902,24 +915,34 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
             <Text style={styles.sectionTitle}>GitHub Integration</Text>
           </View>
 
-          {githubActivity?.githubRepo?.url ? (
-            <View style={styles.repoInfo}>
-              <Text style={styles.repoUrl}>{githubActivity.githubRepo.url}</Text>
-              <TouchableOpacity onPress={() => openUrl(githubActivity.githubRepo.url)}>
-                <Text style={styles.openRepoText}>Open Repository</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            isReporter && (
-              <TouchableOpacity 
-                style={styles.linkRepoButton}
-                onPress={() => setShowGithubLinkModal(true)}
-              >
-                <Icon name="link" size={20} color={Colors.text.primary} />
-                <Text style={styles.linkRepoText}>Link GitHub Repository</Text>
-              </TouchableOpacity>
-            )
-          )}
+          {(() => {
+            const resolvedRepoUrl = githubActivity?.githubRepo?.url || bug?.repositoryUrl || bug?.githubRepo?.url;
+
+            if (resolvedRepoUrl) {
+              return (
+                <View style={styles.repoInfo}>
+                  <Text style={styles.repoUrl}>{resolvedRepoUrl}</Text>
+                  <TouchableOpacity onPress={() => openUrl(resolvedRepoUrl)}>
+                    <Text style={styles.openRepoText}>Open Repository</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            }
+
+            if (isReporter) {
+              return (
+                <TouchableOpacity 
+                  style={styles.linkRepoButton}
+                  onPress={() => setShowGithubLinkModal(true)}
+                >
+                  <Icon name="link" size={20} color={Colors.text.primary} />
+                  <Text style={styles.linkRepoText}>Link GitHub Repository</Text>
+                </TouchableOpacity>
+              );
+            }
+
+            return null;
+          })()}
 
 
         </View>
@@ -1037,13 +1060,13 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
             {bug.severity && (
               <View style={styles.techRow}>
                 <Text style={styles.techLabel}>Severity:</Text>
-                <Text style={styles.techValue}>{bug.severity}</Text>
+                <Text style={styles.techValue}>{formatLabel(bug.severity)}</Text>
               </View>
             )}
             {bug.category && (
               <View style={styles.techRow}>
                 <Text style={styles.techLabel}>Category:</Text>
-                <Text style={styles.techValue}>{bug.category}</Text>
+                <Text style={styles.techValue}>{formatLabel(bug.category)}</Text>
               </View>
             )}
             {bug.project && (
@@ -1117,7 +1140,13 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
         </View>
 
         {/* Repository Link */}
-        {bug.repositoryUrl && (
+        {(() => {
+          const repositoryUrl = bug?.repositoryUrl || bug?.githubRepo?.url || githubActivity?.githubRepo?.url;
+          if (!repositoryUrl) {
+            return null;
+          }
+
+          return (
           <View style={styles.enhancedSection}>
             <View style={styles.sectionHeaderWithIcon}>
               <Icon name="code" size={20} color={Colors.primary.main} />
@@ -1125,14 +1154,15 @@ const EnhancedBugDetailScreen = ({route, navigation}) => {
             </View>
             <TouchableOpacity 
               style={styles.repoCard}
-              onPress={() => openUrl(bug.repositoryUrl)}
+              onPress={() => openUrl(repositoryUrl)}
             >
               <Icon name="link" size={20} color={Colors.accent.blue} />
               <Text style={styles.repoLinkText}>View Repository</Text>
               <Icon name="open-in-new" size={16} color={Colors.accent.blue} />
             </TouchableOpacity>
           </View>
-        )}
+          );
+        })()}
 
         {/* Attachments */}
         {bug.attachments && bug.attachments.length > 0 && (

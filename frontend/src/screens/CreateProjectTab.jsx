@@ -27,7 +27,7 @@ const CreateBugReportScreen = ({navigation}) => {
   const [bugDescription, setBugDescription] = useState('');
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedPriority, setSelectedPriority] = useState('Medium');
-  const [selectedSeverity, setSelectedSeverity] = useState('Medium');
+  const [selectedSeverity, setSelectedSeverity] = useState('Major');
   const [selectedCategory, setSelectedCategory] = useState('Bug');
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
@@ -66,6 +66,9 @@ const CreateBugReportScreen = ({navigation}) => {
         const projectsData = response.data?.projects || [];
         console.log('✅ User projects loaded:', projectsData.length, 'projects');
         setProjects(projectsData);
+        if (projectsData.length > 0) {
+          setSelectedProject(prev => prev || projectsData[0]._id);
+        }
       } else {
         const errorMsg = response.message || response.error || 'Failed to load projects';
         console.error('❌ User projects API error:', errorMsg);
@@ -80,8 +83,30 @@ const CreateBugReportScreen = ({navigation}) => {
   };
 
   const priorities = ['Low', 'Medium', 'High', 'Critical'];
-  const severities = ['Minor', 'Medium', 'Major', 'Critical'];
+  const severities = ['Trivial', 'Minor', 'Major', 'Critical', 'Blocker'];
   const categories = ['Bug', 'Feature', 'Improvement', 'Task', 'Story'];
+
+  const mapSeverityToBackend = (value) => {
+    if (!value) {
+      return 'minor';
+    }
+
+    const normalized = value.toLowerCase();
+    switch (normalized) {
+      case 'critical':
+        return 'critical';
+      case 'major':
+        return 'major';
+      case 'medium':
+        return 'major';
+      case 'blocker':
+        return 'blocker';
+      case 'trivial':
+        return 'trivial';
+      default:
+        return 'minor';
+    }
+  };
 
   const selectImage = () => {
     const options = {
@@ -150,10 +175,13 @@ const CreateBugReportScreen = ({navigation}) => {
   };
 
   const validateRepositoryUrl = (url) => {
-    if (!url) return true; // Optional field
-    const githubPattern = /^https:\/\/github\.com\/[\w\-\.]+\/[\w\-\.]+\/?$/;
-    const gitlabPattern = /^https:\/\/gitlab\.com\/[\w\-\.]+\/[\w\-\.]+\/?$/;
-    return githubPattern.test(url) || gitlabPattern.test(url);
+    if (!url) {
+      return false;
+    }
+
+    const normalizedUrl = url.trim();
+    const githubPattern = /^https:\/\/github\.com\/[\w\-\.]+\/[\w\-\.]+\/?$/i;
+    return githubPattern.test(normalizedUrl);
   };
 
   // Helper function to get selected project name
@@ -176,34 +204,67 @@ const CreateBugReportScreen = ({navigation}) => {
       Alert.alert('Error', 'Please provide steps to reproduce the bug');
       return;
     }
-    if (repositoryUrl && !validateRepositoryUrl(repositoryUrl)) {
-      Alert.alert('Error', 'Please enter a valid GitHub or GitLab repository URL');
+    if (!selectedProject) {
+      Alert.alert('Error', 'Please select a project for this bug');
+      return;
+    }
+
+    const normalizedRepositoryUrl = repositoryUrl.trim();
+    if (!normalizedRepositoryUrl) {
+      Alert.alert('Error', 'Please provide the GitHub repository URL for this bug');
+      return;
+    }
+
+    if (!validateRepositoryUrl(normalizedRepositoryUrl)) {
+      Alert.alert('Error', 'Please enter a valid GitHub repository URL (e.g., https://github.com/owner/repo)');
       return;
     }
 
     setSubmitting(true);
 
     try {
+      const repoSegments = normalizedRepositoryUrl.split('/').filter(Boolean);
+      const repositoryOwner = repoSegments[repoSegments.length - 2] || '';
+      let repositoryName = repoSegments[repoSegments.length - 1] || '';
+      repositoryName = repositoryName.replace(/\.git$/i, '');
+
+      const severityTag = mapSeverityToBackend(selectedSeverity);
+      const tagSet = new Set([
+        selectedCategory.toLowerCase(),
+        selectedPriority.toLowerCase(),
+        severityTag
+      ].filter(Boolean));
+
+      let environmentDetails;
+      if (environment.trim()) {
+        const environmentText = environment.trim();
+        environmentDetails = {
+          device: environmentText
+        };
+      }
+
       // Create bug report object to match backend expectations
       const bugReport = {
         title: bugTitle.trim(),
         description: bugDescription.trim(),
         priority: selectedPriority.toLowerCase(),
-        project: selectedProject || null, // Send project ID or null if not selected
+        projectId: selectedProject || null,
         stepsToReproduce: stepsToReproduce.trim() || undefined,
         expectedBehavior: expectedBehavior.trim() || undefined,
         actualBehavior: actualBehavior.trim() || undefined,
-        environment: environment.trim() || undefined,
+  environment: environmentDetails,
         category: selectedCategory.toLowerCase(), // Ensure lowercase for backend
-        repositoryUrl: repositoryUrl.trim() || undefined,
+        repositoryUrl: normalizedRepositoryUrl,
+  severity: severityTag,
         // Enhanced fields for GitHub integration
-        githubRepo: repositoryUrl.trim() ? {
-          url: repositoryUrl.trim(),
-          name: repositoryUrl.trim().split('/').slice(-1)[0] || '',
-          owner: repositoryUrl.trim().split('/').slice(-2, -1)[0] || ''
-        } : null,
+        githubRepo: {
+          url: normalizedRepositoryUrl,
+          name: repositoryName,
+          owner: repositoryOwner,
+          isPublic: true
+        },
         bountyPoints: 10, // Default bounty points
-        tags: [selectedCategory.toLowerCase(), selectedPriority.toLowerCase()],
+        tags: Array.from(tagSet),
         attachments: attachedFiles.map(file => ({
           name: file.name,
           type: file.type,
@@ -266,7 +327,7 @@ const CreateBugReportScreen = ({navigation}) => {
   const resetForm = () => {
     setBugTitle('');
     setBugDescription('');
-    setSelectedProject('');
+  setSelectedProject(projects[0]?._id || '');
     setStepsToReproduce('');
     setExpectedBehavior('');
     setActualBehavior('');
@@ -274,7 +335,7 @@ const CreateBugReportScreen = ({navigation}) => {
     setRepositoryUrl('');
     setAttachedFiles([]);
     setSelectedPriority('Medium');
-    setSelectedSeverity('Medium');
+    setSelectedSeverity('Major');
     setSelectedCategory('Bug');
   };
 
@@ -292,8 +353,9 @@ const CreateBugReportScreen = ({navigation}) => {
     switch (severity) {
       case 'Critical': return '#ff4757';
       case 'Major': return '#ff6b35';
-      case 'Medium': return '#ffa502';
+      case 'Blocker': return '#e74c3c';
       case 'Minor': return '#2ed573';
+      case 'Trivial': return '#1abc9c';
       default: return '#888888';
     }
   };
@@ -472,7 +534,7 @@ const CreateBugReportScreen = ({navigation}) => {
             {/* Repository URL */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>
-                Repository URL <Text style={styles.optional}>(Optional)</Text>
+                GitHub Repository <Text style={styles.required}>*</Text>
               </Text>
               <TextInput
                 style={styles.input}
@@ -484,7 +546,7 @@ const CreateBugReportScreen = ({navigation}) => {
                 keyboardType="url"
               />
               <Text style={styles.helperText}>
-                Link to GitHub/GitLab repository for community collaboration
+                Required for collaboration. Provide the public GitHub repository where this bug can be reproduced.
               </Text>
             </View>
 

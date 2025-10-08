@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
+import Colors from '../theme/colors';
 
 const SkeletonLoader = ({ style, children }) => {
   const animatedValue = React.useRef(new Animated.Value(0)).current;
@@ -57,23 +58,25 @@ export const BugListSkeleton = ({ count = 5 }) => (
 
 const styles = StyleSheet.create({
   skeleton: {
-    backgroundColor: '#E1E9EE',
+    backgroundColor: Colors.border.medium,
     borderRadius: 4,
   },
   bugCardSkeleton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.background.card,
     borderRadius: 12,
     padding: 16,
     marginHorizontal: 16,
     marginVertical: 8,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 6,
   },
   titleSkeleton: {
     height: 20,
@@ -106,6 +109,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingTop: 8,
+    backgroundColor: Colors.background.primary,
   },
 });
 

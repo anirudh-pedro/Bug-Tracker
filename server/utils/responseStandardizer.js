@@ -185,7 +185,9 @@ const standardizeUserStats = (stats) => {
       totalPoints: 0,
       bugsReported: 0,
       bugsResolved: 0,
-      pullRequests: 0
+      pullRequests: 0,
+      projectsCreated: 0,
+      activeBugs: 0
     };
   }
   
@@ -193,7 +195,9 @@ const standardizeUserStats = (stats) => {
     totalPoints: Number(stats.totalPoints || 0),
     bugsReported: Number(stats.bugsReported || 0),
     bugsResolved: Number(stats.bugsResolved || 0),
-    pullRequests: Number(stats.pullRequests || 0)
+    pullRequests: Number(stats.pullRequests || 0),
+    projectsCreated: Number(stats.projectsCreated || 0),
+    activeBugs: Number(stats.activeBugs || 0)
   };
 };
 

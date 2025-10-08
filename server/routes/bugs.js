@@ -46,6 +46,14 @@ router.post('/', authenticate, [
     .optional()
     .isIn(['low', 'medium', 'high', 'critical'])
     .withMessage('Priority must be low, medium, high, or critical'),
+  body('severity')
+    .optional()
+    .isIn(['trivial', 'minor', 'major', 'critical', 'blocker'])
+    .withMessage('Severity must be trivial, minor, major, critical, or blocker'),
+  body('category')
+    .optional()
+    .isIn(['bug', 'feature', 'improvement', 'task', 'story'])
+    .withMessage('Category must be bug, feature, improvement, task, or story'),
   body('projectId')
     .optional()
     .isMongoId()
@@ -53,7 +61,25 @@ router.post('/', authenticate, [
   body('bountyPoints')
     .optional()
     .isInt({ min: 0, max: 1000 })
-    .withMessage('Bounty points must be between 0 and 1000')
+    .withMessage('Bounty points must be between 0 and 1000'),
+  body('repositoryUrl')
+    .trim()
+    .notEmpty()
+    .withMessage('Repository URL is required')
+    .matches(/^https:\/\/github\.com\/[\w\-.]+\/[\w\-.]+\/?$/i)
+    .withMessage('Repository URL must be a valid GitHub repository (https://github.com/owner/repo)'),
+  body('stepsToReproduce')
+    .optional()
+    .isLength({ min: 3 })
+    .withMessage('Steps to reproduce must contain at least 3 characters'),
+  body('expectedBehavior')
+    .optional()
+    .isLength({ min: 3 })
+    .withMessage('Expected behavior must contain at least 3 characters'),
+  body('actualBehavior')
+    .optional()
+    .isLength({ min: 3 })
+    .withMessage('Actual behavior must contain at least 3 characters')
 ], createBug);
 
 // @desc    Update bug

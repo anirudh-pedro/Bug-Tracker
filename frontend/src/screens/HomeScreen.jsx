@@ -104,7 +104,7 @@ const HomeScreen = ({ navigation, route }) => {
           setStatsData([
             { id: '1', title: 'Bugs Resolved', count: userStats.bugsResolved || 0, icon: 'check-circle', gradient: Colors.gradients.emerald, iconBg: 'rgba(16, 185, 129, 0.15)' },
             { id: '2', title: 'Bugs Reported', count: userStats.bugsReported || 0, icon: 'bug-report', gradient: Colors.gradients.amber, iconBg: 'rgba(245, 158, 11, 0.15)' },
-            { id: '3', title: 'Projects', count: userStats.projectsCreated || 0, icon: 'folder', gradient: Colors.gradients.blue, iconBg: 'rgba(59, 130, 246, 0.15)' },
+            { id: '3', title: 'Projects Created', count: userStats.projectsCreated || 0, icon: 'folder', gradient: Colors.gradients.blue, iconBg: 'rgba(59, 130, 246, 0.15)' },
           ]);
           setUserPoints(userStats.totalPoints || 0);
           
