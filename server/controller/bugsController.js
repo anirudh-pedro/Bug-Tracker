@@ -360,13 +360,47 @@ const createBug = async (req, res) => {
       bugData.tags = tags.filter(tag => typeof tag === 'string' && tag.trim()).map(tag => tag.trim());
     }
 
-    if (Array.isArray(attachments) && attachments.length > 0) {
-      bugData.attachments = attachments.map((attachment) => ({
-        filename: attachment.name || attachment.filename || 'attachment',
-        url: attachment.url || '',
-        type: attachment.type || attachment.mimeType || '',
-        size: Number(attachment.size || 0)
-      }));
+    let parsedAttachments = [];
+
+    if (Array.isArray(attachments)) {
+      parsedAttachments = attachments;
+    } else if (typeof attachments === 'string') {
+      try {
+        const jsonValue = JSON.parse(attachments);
+        if (Array.isArray(jsonValue)) {
+          parsedAttachments = jsonValue;
+        }
+      } catch (parseError) {
+        console.warn('⚠️ Unable to parse attachments JSON string:', parseError.message);
+      }
+    }
+
+    if (parsedAttachments.length > 0) {
+      bugData.attachments = parsedAttachments
+        .map((attachment) => {
+          if (!attachment) return null;
+
+          const filename = attachment.name || attachment.filename;
+          const url = attachment.url || attachment.uri || '';
+          const type = attachment.type || attachment.mimeType || '';
+          const size = attachment.size ? Number(attachment.size) : undefined;
+
+          if (!filename && !url) {
+            return null;
+          }
+
+          return {
+            filename: filename || 'attachment',
+            url,
+            type,
+            size,
+          };
+        })
+        .filter(Boolean);
+
+      if (bugData.attachments.length === 0) {
+        delete bugData.attachments;
+      }
     }
 
     let repoOwner = githubRepo?.owner;

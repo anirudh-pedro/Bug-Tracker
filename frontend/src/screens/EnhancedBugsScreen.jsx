@@ -180,6 +180,14 @@ const EnhancedBugsScreen = ({navigation, route}) => {
     return bugs; // Show ALL bugs in global view
   }, [bugs]);
 
+  const getBugIdentifier = (bug) => {
+    if (!bug) {
+      return null;
+    }
+
+    return bug._id || bug.id || bug.bugId || null;
+  };
+
   // Edit and Delete handlers
   const handleEditBug = (bug) => {
     setSelectedBug(bug);
@@ -200,17 +208,26 @@ const EnhancedBugsScreen = ({navigation, route}) => {
 
     try {
       setIsEditingSaving(true);
-      const response = await enhancedNetworkUtils.put(`/bugs/${selectedBug._id}`, {
-        title: editTitle.trim(),
-        description: editDescription.trim(),
-        severity: editSeverity,
-        status: editStatus,
+      const bugIdentifier = getBugIdentifier(selectedBug);
+      if (!bugIdentifier) {
+        throw new Error('Unable to determine bug identifier');
+      }
+
+      const response = await apiRequest(`/api/bugs/${bugIdentifier}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          description: editDescription.trim(),
+          severity: editSeverity,
+          status: editStatus,
+        })
       });
 
       if (response.success) {
+        const targetId = bugIdentifier;
         // Update the bug in the local state
         setBugs(prevBugs => prevBugs.map(bug => 
-          bug._id === selectedBug._id 
+          getBugIdentifier(bug) === targetId
             ? { ...bug, title: editTitle, description: editDescription, severity: editSeverity, status: editStatus }
             : bug
         ));
@@ -234,11 +251,19 @@ const EnhancedBugsScreen = ({navigation, route}) => {
 
     try {
       setIsDeleting(true);
-      const response = await enhancedNetworkUtils.delete(`/bugs/${selectedBug._id}`);
+      const bugIdentifier = getBugIdentifier(selectedBug);
+      if (!bugIdentifier) {
+        throw new Error('Unable to determine bug identifier');
+      }
+
+      const response = await apiRequest(`/api/bugs/${bugIdentifier}`, {
+        method: 'DELETE'
+      });
 
       if (response.success) {
         // Remove the bug from local state
-        setBugs(prevBugs => prevBugs.filter(bug => bug._id !== selectedBug._id));
+        const targetId = bugIdentifier;
+        setBugs(prevBugs => prevBugs.filter(bug => getBugIdentifier(bug) !== targetId));
         setShowDeleteModal(false);
         setSelectedBug(null);
         Alert.alert('Success', 'Bug deleted successfully!');
