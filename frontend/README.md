@@ -62,6 +62,16 @@ If everything is set up correctly, you should see your new app running in the An
 
 This is one way to run your app — you can also build it directly from Android Studio or Xcode.
 
+### Configure the API URL (important!)
+
+The mobile app talks to the Node.js backend. During development you can point the app at any reachable server without touching the code:
+
+- Preferred: set an environment variable when starting Metro, for example `BUGTRACKER_API_URL="http://192.168.1.42:5000" npm start`.
+- If you are using the Android emulator and the backend runs on the same machine, the default `http://10.0.2.2:5000` will work out of the box.
+- If you are using the iOS simulator (or Metro on desktop), the default `http://127.0.0.1:5000` will be used automatically.
+
+You can override the URL at runtime without restarting the app by updating `BUGTRACKER_API_URL` and reloading (press <kbd>R</kbd>). This prevents the `api/auth/google` login call from timing out when your LAN IP changes.
+
 ## Step 3: Modify your app
 
 Now that you have successfully run the app, let's make changes!

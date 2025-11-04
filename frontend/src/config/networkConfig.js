@@ -19,12 +19,42 @@ const isDevelopment = __DEV__;
  * 2. Firewall allows incoming connections on port 5000
  * 3. Server is running with HOST='0.0.0.0' (already configured)
  */
+
+// Determine development backend URL based on environment/platform
+const resolveDevelopmentBackendUrl = () => {
+  // Allow overriding through Metro env (RN 0.72+) or Expo extras
+  const envUrl =
+    process.env.BUGTRACKER_API_URL ||
+    process.env.EXPO_PUBLIC_API_URL ||
+    process.env.REACT_NATIVE_APP_API_URL ||
+    process.env.API_URL;
+
+  if (envUrl && envUrl.trim().length) {
+    return envUrl.trim().replace(/\/$/, '');
+  }
+
+  // Fallback to local defaults depending on platform
+  try {
+    const { Platform } = require('react-native');
+    if (Platform.OS === 'android') {
+      // Android emulator uses the special 10.0.2.2 host to access the PC
+      return 'http://10.0.2.2:5000';
+    }
+    // iOS simulator (and Metro on desktop) can talk to localhost directly
+    return 'http://127.0.0.1:5000';
+  } catch (error) {
+    // If Platform isn't available (e.g. during Jest), fall back to localhost
+    return 'http://127.0.0.1:5000';
+  }
+};
+
+const developmentBackendUrl = resolveDevelopmentBackendUrl();
+
 export const NETWORK_CONFIG = {
   // Primary backend URL
-  // For mobile network: Replace with your computer's LAN IP
-  // Example: 'http://192.168.1.100:5000' (your computer's IP on WiFi/hotspot)
-  BACKEND_URL: isDevelopment 
-    ? 'http://10.113.191.115:5000' // Current WiFi IP - Updated Oct 5, 2025
+  // Override via BUGTRACKER_API_URL / EXPO_PUBLIC_API_URL to point at a real server
+  BACKEND_URL: isDevelopment
+    ? 'http://10.126.128.115:5000'  // Current Network IP from backend
     : 'https://your-production-api.com',
   
   /**
@@ -37,11 +67,11 @@ export const NETWORK_CONFIG = {
    */
   FALLBACK_URLS: isDevelopment 
     ? [
-        'http://10.113.191.115:5000',  // Current WiFi IP (primary)
-        'http://172.16.8.229:5000',    // Ethernet IP (fallback)
-        'http://192.168.43.1:5000',    // Common mobile hotspot IP
-        'http://10.178.105.115:5000',  // Alternative mobile network IP
-        'http://localhost:5000',       // Localhost fallback
+        'http://10.126.128.115:5000',  // Current Network IP (from backend)
+        developmentBackendUrl,
+        'http://10.0.2.2:5000',   // Android emulator special host
+        'http://127.0.0.1:5000',  // iOS simulator / desktop
+        'http://localhost:5000',  // Node/Metro environment
       ]
     : [],
   

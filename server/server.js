@@ -48,17 +48,11 @@ const corsOptions = {
         'https://your-production-frontend.com',
         'https://www.your-production-frontend.com'
       ]
-    : [
-        // Development: Allow all origins for React Native
-        // This includes emulators, physical devices, and local development
-        'http://localhost:3000', 
-        'http://10.0.2.2:3000',  // Android emulator
-        'http://192.168.212.115:3000',
-        '*'  // Allow all for development
-      ],
+    : true,  // Allow all origins in development for React Native
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  exposedHeaders: ['Content-Length', 'Content-Type']
 };
 
 app.use(cors(corsOptions));
