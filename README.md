@@ -977,23 +977,6 @@ Thank you for contributing! 🎉
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
-### What This Means
-
-✅ **You can:**
-
-- Use this project commercially
-- Modify and distribute
-- Use privately
-- Sublicense
-
-❌ **You must:**
-
-- Include the original copyright notice
-- Include the license text
-
-⚠️ **No warranty:**
-
-- Software provided "as is" without warranty
 
 ## 👥 Authors & Acknowledgments
 
@@ -1011,48 +994,6 @@ Special thanks to the open-source community and these amazing projects:
 - **[Firebase](https://firebase.google.com/)** - Authentication and backend services
 - **[React Navigation](https://reactnavigation.org/)** - Routing and navigation
 - **[Mongoose](https://mongoosejs.com/)** - Elegant MongoDB object modeling
-
-### Community
-
-Thank you to all contributors who have helped improve this project! 🙏
-
-## 📧 Support & Contact
-
-### Documentation
-
-- 📖 **[Enhanced Features Guide](ENHANCED_FEATURES.md)** - Detailed feature documentation
-- 🌐 **[Mobile Network Setup](MOBILE_NETWORK_SETUP.md)** - Complete network configuration guide
-- ⚡ **[Quick Reference](NETWORK_QUICK_REFERENCE.md)** - Commands and configs at a glance
-
-### Get Help
-
-- **GitHub Issues:** [Report bugs or request features](https://github.com/anirudh-pedro/Bug-Tracker/issues)
-- **Discussions:** Ask questions and share ideas
-- **Email:** Contact the maintainer for private inquiries
-
-### Reporting Issues
-
-When reporting bugs, please include:
-
-1. **Description:** Clear description of the issue
-2. **Steps to Reproduce:** How to trigger the bug
-3. **Expected Behavior:** What should happen
-4. **Actual Behavior:** What actually happens
-5. **Environment:**
-   - Device (e.g., Pixel 7, iPhone 14)
-   - OS version (Android 13, iOS 17)
-   - App version
-6. **Logs:** Relevant error messages or console output
-7. **Screenshots:** If applicable
-
-### Feature Requests
-
-We welcome feature suggestions! Please:
-
-- Check if the feature already exists or is planned
-- Describe the use case and benefits
-- Suggest potential implementation approach
-- Be open to discussion and feedback
 
 ---
 
