@@ -1,219 +1,419 @@
-# 🐛 Bug Tracker - Dynamic Bug Reporting System
+# 🐛 Bug Tracker# 🐛 Bug Tracker - Dynamic Bug Reporting System
 
-A modern, production-ready bug tracking application featuring Google OAuth authentication, GitHub integration, gamified points system, and intelligent network handling. Built with React Native for mobile and Express.js + MongoDB for the backend.
+A modern bug tracking application with Google OAuth, GitHub integration, and points system. Built with React Native and Express.js + MongoDB.A modern, production-ready bug tracking application featuring Google OAuth authentication, GitHub integration, gamified points system, and intelligent network handling. Built with React Native for mobile and Express.js + MongoDB for the backend.
 
-## ✨ Features
+## ✨ Features## ✨ Features
 
-### � Authentication & Security
+- **Google Sign-In** - Firebase authentication### � Authentication & Security
 
-- **Google Sign-In** - Seamless authentication via Firebase Auth
-- **JWT Token Management** - Secure session handling with automatic refresh
-- **User Isolation** - Complete data separation per authenticated user
-- **Profile Management** - Customizable user profiles with avatar support
+- **GitHub Integration** - Required repo links for bugs
+
+- **Project Management** - Organize bugs by projects- **Google Sign-In** - Seamless authentication via Firebase Auth
+
+- **File Attachments** - Upload screenshots and documents- **JWT Token Management** - Secure session handling with automatic refresh
+
+- **Dark Theme** - Clean black UI- **User Isolation** - Complete data separation per authenticated user
+
+- **Points System** - Track contributions and statistics- **Profile Management** - Customizable user profiles with avatar support
+
+- **Smart Networking** - Retry logic and offline support
 
 ### 🐛 Bug Management
 
-- **GitHub Repository Integration** - Required GitHub repo metadata for all bugs
-- **Rich Bug Details** - Title, description, priority, status, and attachments
-- **File Attachments** - Upload and manage bug screenshots and documents
-- **Bug Lifecycle Tracking** - From open → in-progress → resolved → closed
-- **Smart Deletion** - Cascade delete bugs when projects are removed
+## 🚀 Quick Start
 
-### 🚀 Project Organization
+- **GitHub Repository Integration** - Required GitHub repo metadata for all bugs
+
+### Prerequisites- **Rich Bug Details** - Title, description, priority, status, and attachments
+
+- **File Attachments** - Upload and manage bug screenshots and documents
+
+- Node.js 16+- **Bug Lifecycle Tracking** - From open → in-progress → resolved → closed
+
+- React Native development environment- **Smart Deletion** - Cascade delete bugs when projects are removed
+
+- MongoDB (local or Atlas)
+
+- Firebase project with Google Sign-In enabled### 🚀 Project Organization
+
+- Android Studio or Xcode
 
 - **Multi-Project Support** - Organize bugs across different projects
-- **Project Dashboard** - Overview statistics and quick access
+
+### Installation- **Project Dashboard** - Overview statistics and quick access
+
 - **User-Scoped Projects** - Projects isolated to authenticated users
-- **Project Details** - View all bugs within a project context
 
-### 🎨 User Experience
+1. **Clone and install**- **Project Details** - View all bugs within a project context
 
-- **Dark Theme UI** - Elegant black (#000000) background with transparent accents
+````bash### 🎨 User Experience
+
+git clone https://github.com/anirudh-pedro/Bug-Tracker.git
+
+cd Bug-Tracker- **Dark Theme UI** - Elegant black (#000000) background with transparent accents
+
 - **Onboarding Flow** - Smooth first-time user experience
-- **Responsive Design** - Optimized layouts for all screen sizes
-- **Loading States** - Visual feedback during async operations
 
-### 📱 Mobile Network Excellence
+# Install dependencies- **Responsive Design** - Optimized layouts for all screen sizes
 
-- **Intelligent Retry Logic** - Exponential backoff for failed requests
+cd server && npm install- **Loading States** - Visual feedback during async operations
+
+cd ../frontend && npm install
+
+```### 📱 Mobile Network Excellence
+
+
+
+2. **Configure Firebase**- **Intelligent Retry Logic** - Exponential backoff for failed requests
+
 - **Multiple URL Fallbacks** - Automatic failover to backup servers
-- **Network Quality Monitoring** - Adaptive behavior based on connection speed
-- **Extended Timeouts** - Mobile-friendly request timeouts (30s)
-- **Circuit Breaker Pattern** - Prevents cascading failures
+
+- Create Firebase project at [console.firebase.google.com](https://console.firebase.google.com)- **Network Quality Monitoring** - Adaptive behavior based on connection speed
+
+- Enable Google Sign-In- **Extended Timeouts** - Mobile-friendly request timeouts (30s)
+
+- Download `google-services.json` → `frontend/android/app/`- **Circuit Breaker Pattern** - Prevents cascading failures
+
+- Download `GoogleService-Info.plist` → Add to Xcode project
 
 ### 🏆 Gamification
 
+3. **Environment setup**
+
 - **Points System** - Award points for bug fixes and contributions
-- **User Statistics** - Track bugs reported, fixed, and points earned
+
+Create `server/.env`:- **User Statistics** - Track bugs reported, fixed, and points earned
+
 - **Leaderboards** - Compare performance with other users
 
-## 🚀 Quick Start
-
-### Prerequisites
-
-- **Node.js** 16+ and npm
-- **React Native** development environment ([setup guide](https://reactnative.dev/docs/environment-setup))
-- **MongoDB** database (local or cloud)
-- **Firebase Project** with Google Sign-In enabled
-- **Android Studio** (for Android) or **Xcode** (for iOS)
-- Physical Android/iOS device or emulator
-
-### Installation
-
-1. **Clone the repository**
-
-```bash
-git clone https://github.com/anirudh-pedro/Bug-Tracker.git
-cd Bug-Tracker
-```
-
-2. **Install server dependencies**
-
-```bash
-cd server
-npm install
-```
-
-3. **Install frontend dependencies**
-
-```bash
-cd ../frontend
-npm install
-```
-
-4. **Configure Firebase**
-
-   - Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
-   - Enable Google Sign-In in Authentication → Sign-in methods
-   - Download `google-services.json` (Android) and place in `frontend/android/app/`
-   - Download `GoogleService-Info.plist` (iOS) and add to Xcode project
-
-5. **Set up environment variables**
-
-Create `server/.env`:
-
 ```env
-mongo_uri=mongodb://localhost:27017/bugtracker
-# or use MongoDB Atlas: mongodb+srv://user:pass@cluster.mongodb.net/bugtracker
 
-JWT_SECRET=your-super-secret-jwt-key-change-this
-PORT=5000
+mongo_uri=mongodb://localhost:27017/bugtracker## 🚀 Quick Start
+
+JWT_SECRET=your-secret-key
+
+PORT=5000### Prerequisites
+
 NODE_ENV=development
-```
 
-6. **Find your computer's IP address**
+```- **Node.js** 16+ and npm
 
-For mobile testing on the same network:
+- **React Native** development environment ([setup guide](https://reactnative.dev/docs/environment-setup))
 
-```bash
-cd server
-npm run find-ip
-```
+4. **Network configuration**- **MongoDB** database (local or cloud)
 
-This will display your local IP (e.g., `10.126.128.115`).
+- **Firebase Project** with Google Sign-In enabled
 
-7. **Configure network settings**
+Find your IP: `cd server && npm run find-ip`- **Android Studio** (for Android) or **Xcode** (for iOS)
+
+- Physical Android/iOS device or emulator
 
 Update `frontend/src/config/networkConfig.js`:
 
-```javascript
-// Development IP - replace with YOUR IP from step 6
-const DEV_BACKEND_IP = "10.126.128.115"; // ← Change this!
-const DEV_BACKEND_PORT = "5000";
+### Installation
 
-const DEVELOPMENT_URLS = [
+```javascript
+
+const DEV_BACKEND_IP = '10.126.128.115'; // Your IP here1. **Clone the repository**
+
+````
+
+````bash
+
+5. **Run the app**git clone https://github.com/anirudh-pedro/Bug-Tracker.git
+
+cd Bug-Tracker
+
+```bash```
+
+# Terminal 1 - Start backend
+
+cd server && npm start2. **Install server dependencies**
+
+
+
+# Terminal 2 - Run mobile app```bash
+
+cd frontendcd server
+
+npx react-native run-android  # or run-iosnpm install
+
+````
+
+## 🛠️ Tech Stack3. **Install frontend dependencies**
+
+**Frontend:** React Native, Firebase Auth, React Navigation, AsyncStorage```bash
+
+cd ../frontend
+
+**Backend:** Node.js, Express.js, MongoDB, Mongoose, JWT, bcryptjsnpm install
+
+````
+
+**Tools:** Metro Bundler, Gradle, CocoaPods
+
+4. **Configure Firebase**
+
+## 📱 Mobile Testing
+
+   - Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
+
+Testing on physical device:   - Enable Google Sign-In in Authentication → Sign-in methods
+
+   - Download `google-services.json` (Android) and place in `frontend/android/app/`
+
+1. Enable mobile hotspot   - Download `GoogleService-Info.plist` (iOS) and add to Xcode project
+
+2. Connect computer to hotspot
+
+3. Run `npm run find-ip` and update `networkConfig.js`5. **Set up environment variables**
+
+4. Allow port 5000 in firewall
+
+5. Start server and run appCreate `server/.env`:
+
+
+
+See [Mobile Network Setup](MOBILE_NETWORK_SETUP.md) for detailed guide.```env
+
+mongo_uri=mongodb://localhost:27017/bugtracker
+
+## 🐛 Troubleshooting# or use MongoDB Atlas: mongodb+srv://user:pass@cluster.mongodb.net/bugtracker
+
+
+
+### Cannot connect to server?JWT_SECRET=your-super-secret-jwt-key-change-this
+
+PORT=5000
+
+```bashNODE_ENV=development
+
+# Test server```
+
+curl http://YOUR_IP:5000/api/health
+
+6. **Find your computer's IP address**
+
+# Should return: {"status":"ok","timestamp":"..."}
+
+```For mobile testing on the same network:
+
+
+
+- Check firewall allows port 5000```bash
+
+- Verify same WiFi networkcd server
+
+- Confirm IP in `networkConfig.js`npm run find-ip
+
+````
+
+### Google Sign-In issues?
+
+This will display your local IP (e.g., `10.126.128.115`).
+
+- Verify `google-services.json` in `frontend/android/app/`
+
+- Check Firebase Console has Google Sign-In enabled7. **Configure network settings**
+
+- Clear app data and retry
+
+Update `frontend/src/config/networkConfig.js`:
+
+### Build errors?
+
+````javascript
+
+**Android:**// Development IP - replace with YOUR IP from step 6
+
+```bashconst DEV_BACKEND_IP = "10.126.128.115"; // ← Change this!
+
+cd frontend/android && ./gradlew cleanconst DEV_BACKEND_PORT = "5000";
+
+npx react-native run-android
+
+```const DEVELOPMENT_URLS = [
+
   `http://${DEV_BACKEND_IP}:${DEV_BACKEND_PORT}`, // Primary
-  "http://10.0.2.2:5000", // Android emulator fallback
-  "http://localhost:5000", // iOS simulator fallback
-];
-```
+
+**iOS:**  "http://10.0.2.2:5000", // Android emulator fallback
+
+```bash  "http://localhost:5000", // iOS simulator fallback
+
+cd frontend/ios && pod install];
+
+npx react-native run-ios```
+
+````
 
 8. **Start the MongoDB server** (if running locally)
 
-```bash
-mongod
-```
+## 📝 API Endpoints
+
+````bash
+
+### Authenticationmongod
+
+- `POST /api/auth/google` - Google Sign-In```
+
+- `GET /api/users/profile-status` - Onboarding status
 
 9. **Start the backend server**
 
-```bash
-cd server
-npm start
-```
+### Projects
 
-You should see: `✅ Server running on port 5000`
+- `GET /api/projects` - List projects```bash
 
-10. **Run the mobile app**
+- `POST /api/projects` - Create projectcd server
+
+- `DELETE /api/projects/:id` - Delete projectnpm start
+
+````
+
+### Bugs
+
+- `GET /api/bugs` - List bugs (filters: `?status=open&priority=high`)You should see: `✅ Server running on port 5000`
+
+- `POST /api/bugs` - Create bug (requires: title, description, projectId, githubRepo)
+
+- `PUT /api/bugs/:id` - Update bug10. **Run the mobile app**
+
+- `DELETE /api/bugs/:id` - Delete bug
 
 **For Android:**
 
-```bash
-cd frontend
+### System
+
+- `GET /api/health` - Health check```bash
+
+- `GET /api/dashboard/stats` - Dashboard statisticscd frontend
+
 npx react-native run-android
-```
 
-**For iOS:**
+## 🚀 Deployment```
 
-```bash
-cd frontend
-npx pod-install
-npx react-native run-ios
-```
+### Backend**For iOS:**
 
-11. **Test the connection**
+`env`bash
 
-- Open the app on your device/emulator
+NODE_ENV=productioncd frontend
+
+mongo_uri=mongodb+srv://user:pass@cluster.mongodb.net/bugtrackernpx pod-install
+
+JWT_SECRET=strong-random-secretnpx react-native run-ios
+
+````
+
+
+
+Update CORS in `server/server.js` to your domain.11. **Test the connection**
+
+
+
+### Frontend- Open the app on your device/emulator
+
 - Tap **"Get Started"**
-- Sign in with Google
+
+Update `frontend/src/config/networkConfig.js`:- Sign in with Google
+
 - You should land on the dashboard!
 
-## 📱 Mobile Network Setup
+```javascript
+
+const PRODUCTION_BACKEND_URL = 'https://api.yourdomain.com';## 📱 Mobile Network Setup
+
+```
 
 Testing on your phone using mobile network? See our detailed guides:
 
-- **[Mobile Network Setup Guide](MOBILE_NETWORK_SETUP.md)** - Complete setup instructions
-- **[Quick Reference](NETWORK_QUICK_REFERENCE.md)** - Quick command reference
+Build releases:
+
+```bash- **[Mobile Network Setup Guide](MOBILE_NETWORK_SETUP.md)** - Complete setup instructions
+
+# Android- **[Quick Reference](NETWORK_QUICK_REFERENCE.md)** - Quick command reference
+
+cd frontend/android && ./gradlew bundleRelease
 
 ### Quick Mobile Setup
 
-1. Enable mobile hotspot on your phone
-2. Connect your computer to the hotspot
+# iOS
+
+# Open in Xcode → Product → Archive1. Enable mobile hotspot on your phone
+
+```2. Connect your computer to the hotspot
+
 3. Run `npm run find-ip` in the server directory
-4. Update `networkConfig.js` with the displayed IP
+
+## 🔐 Security4. Update `networkConfig.js` with the displayed IP
+
 5. Configure firewall to allow port 5000
-6. Start the server and run the app
 
-## 🛠️ Technology Stack
+- Firebase OAuth 2.0 & JWT tokens6. Start the server and run the app
 
-### Frontend (Mobile)
+- Rate limiting (100 req/15min)
 
-- **React Native 0.80+** - Cross-platform mobile framework
+- Helmet security headers## 🛠️ Technology Stack
+
+- User data isolation
+
+- bcrypt password hashing### Frontend (Mobile)
+
+
+
+⚠️ **Before production:** Change JWT_SECRET, update CORS, enable HTTPS- **React Native 0.80+** - Cross-platform mobile framework
+
 - **React Navigation v6** - Native stack and tab navigation
-- **Firebase Auth** - Google Sign-In integration
-- **AsyncStorage** - Secure local token and data persistence
-- **React Native Vector Icons** - Material and Ionicons icon sets
-- **Custom Network Layer** - Enhanced retry logic and error handling
 
-### Backend (Server)
+## 🤝 Contributing- **Firebase Auth** - Google Sign-In integration
+
+- **AsyncStorage** - Secure local token and data persistence
+
+1. Fork the repo- **React Native Vector Icons** - Material and Ionicons icon sets
+
+2. Create feature branch (`git checkout -b feature/name`)- **Custom Network Layer** - Enhanced retry logic and error handling
+
+3. Commit changes (`git commit -m 'feat: description'`)
+
+4. Push to branch (`git push origin feature/name`)### Backend (Server)
+
+5. Open Pull Request
 
 - **Node.js** - JavaScript runtime
-- **Express.js** - Web application framework
+
+## 📄 License- **Express.js** - Web application framework
+
 - **MongoDB** - NoSQL database
-- **Mongoose** - MongoDB object modeling
+
+MIT License - see [LICENSE](LICENSE)- **Mongoose** - MongoDB object modeling
+
 - **JWT (jsonwebtoken)** - Stateless authentication
-- **bcryptjs** - Password hashing
+
+## 👥 Author- **bcryptjs** - Password hashing
+
 - **express-rate-limit** - Rate limiting middleware
-- **Helmet** - Security headers
+
+**Anirudh** - [anirudh-pedro](https://github.com/anirudh-pedro)- **Helmet** - Security headers
+
 - **Compression** - Response compression
-- **CORS** - Cross-origin resource sharing
 
-### DevOps & Tools
+## 📧 Support- **CORS** - Cross-origin resource sharing
 
-- **Metro Bundler** - React Native build tool
+
+
+- [Issues](https://github.com/anirudh-pedro/Bug-Tracker/issues)### DevOps & Tools
+
+- [Mobile Network Setup Guide](MOBILE_NETWORK_SETUP.md)
+
+- [Enhanced Features](ENHANCED_FEATURES.md)- **Metro Bundler** - React Native build tool
+
 - **Gradle** - Android build system
-- **CocoaPods** - iOS dependency management
+
+---- **CocoaPods** - iOS dependency management
+
 - **Git** - Version control
-- **npm** - Package management
+
+**Built with ❤️ for better bug tracking**- **npm** - Package management
+
 
 ## 📚 Documentation
 
@@ -1000,3 +1200,4 @@ Special thanks to the open-source community and these amazing projects:
 **Built with ❤️ for better bug tracking**
 
 _Making bug management simple, effective, and even fun!_
+````
